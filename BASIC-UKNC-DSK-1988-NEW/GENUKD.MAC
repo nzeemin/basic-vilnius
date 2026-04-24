@@ -1,0 +1,81 @@
+﻿	.ENABLE	LC
+	.TITLE	BASVU
+
+; ###################
+; #                 #
+; #   BASIC - VVU   #
+; #                 #
+; ###################
+
+; ИСПОЛНИТЕЛЬ: ВЦКП ВГУ
+; ВИЛЬНЮС,1988
+
+; ======================
+; ****БЛОК НАСТРОИКИ****
+; ======================
+
+;------------------------
+; MASINA:		;
+	BK0011	=1	;
+	BK0010	=2	;
+	DVK	=3	;
+	UK	=7	;
+	NEMIGA	=10	;
+			;
+	MASINA	=UK	;	.IF EQ,MASINA-XX
+;-----------------------;
+; GRAFTYP:		;
+	NO	=0	;
+	BK0011	=1	;
+	BK0010	=2	;
+	CDR4	=4	;
+	CDR8	=5	;
+	KGD	=6	;
+	UK	=7	;
+	NEMIGA	=10	;
+			;
+	GRAFTYP	=UK	;	.IF EQ,GRAFTYP-XX
+;-----------------------;
+; NETTYP:		;
+	NO	=0	;
+	BK0010	=2	;
+	UK	=7	;
+	NEMIGA	=10	;
+			;
+	NETTYP	=NO	;	.IF EQ,NETTYP-XX
+;-----------------------;
+; PRC:			;
+	NO	=0	;
+	EIS	=1	;
+	FIS	=2	;
+			;
+	PRC	=FIS	;	.IF EQ,PRC-XX
+;-----------------------;
+; MEMTYP:		;
+	RAM	=1	;
+	ROM	=2	;
+			;
+	MEMTYP	=RAM	;	.IF EQ,MEMTYP-XX
+;-----------------------;
+	DISK	=MASINA	;	.IF EQ,MASINA-DISK
+	CASSET	=MASINA	;	.IF EQ,MASINA-CASSET
+			;
+	MDS	=NO	;	.IF EQ,MASINA-MDS
+			;
+;	HOOKS	=0	;	.IF DF,HOOKS
+ 	SNG	=0	;	.IF DF,SNG
+			;
+	MESSAG	=0	;	.IF EQ,MESSAG
+			;
+	STACK	=1000	;	.IF EQ,STACK-1000 (2000)
+;-----------------------;
+.IF EQ,MASINA-UK
+	MSX=MASINA
+	UKM=MASINA
+.IFF
+	MSX=0
+	UKM=0
+.ENDC
+
+.IIF NDF,SNG		FFUN=0
+.IIF LE,PRC-EIS	FFUN=0

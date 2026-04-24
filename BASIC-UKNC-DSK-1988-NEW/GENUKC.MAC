@@ -1,0 +1,81 @@
+﻿	.ENABLE	LC
+	.TITLE	BASVU
+
+; ###################
+; #                 #
+; #   BASIC - VVU   #
+; #                 #
+; ###################
+
+; ИСПОЛНИТЕЛЬ: ВЦКП ВГУ
+; ВИЛЬНЮС,1988
+
+; ======================
+; ****БЛОК НАСТРОИКИ****
+; ======================
+
+;------------------------
+; MASINA:		;  Машина:
+	BK0011	=1	;	БК-0011
+	BK0010	=2	;	БК-0010
+	DVK	=3	;	ДВК
+	UK	=7	;	УКНЦ
+	NEMIGA	=10	;	Немига
+			;
+	MASINA	=UK	;	.IF EQ,MASINA-XX
+;-----------------------;
+; GRAFTYP:		;  Тип графики:
+	NO	=0	;	Нет
+	BK0011	=1	;	БК-0011
+	BK0010	=2	;	БК-0010
+	CDR4	=4	;
+	CDR8	=5	;
+	KGD	=6	;	КГД
+	UK	=7	;	УКНЦ
+	NEMIGA	=10	;	Немига
+			;
+	GRAFTYP	=UK	;	.IF EQ,GRAFTYP-XX
+;-----------------------;
+; NETTYP:		;  Тип локальной сети:
+	NO	=0	;	Нет
+	BK0010	=2	;	БК-0010
+	UK	=7	;	УКНЦ
+	NEMIGA	=10	;	Немига
+			;
+	NETTYP	=NO	;	.IF EQ,NETTYP-XX
+;-----------------------;
+; PRC:			;  Особенности процессора:
+	NO	=0	;	Нет
+	EIS	=1	;	Набор команд EIS
+	FIS	=2	;	Набор команд FIS
+			;
+	PRC	=FIS	;	.IF EQ,PRC-XX
+;-----------------------;
+; MEMTYP:		;  В каком типе памяти размещается Бейсик:
+	RAM	=1	;	ОЗУ
+	ROM	=2	;	ПЗУ
+			;
+	MEMTYP	=RAM	;	.IF EQ,MEMTYP-XX
+;-----------------------;
+	DISK	=NO	;	.IF EQ,MASINA-DISK
+	CASSET	=MASINA	;	.IF EQ,MASINA-CASSET
+			;
+	MDS	=NO	;	.IF EQ,MASINA-MDS
+			;
+;	HOOKS	=0	;	.IF DF,HOOKS
+ 	SNG	=0	;	.IF DF,SNG
+			;
+	MESSAG	=1	;	.IF EQ,MESSAG
+			;
+	STACK	=1000	;	.IF EQ,STACK-1000 (2000)
+;-----------------------;
+.IF EQ,MASINA-UK
+	MSX=MASINA
+	UKM=MASINA
+.IFF
+	MSX=0
+	UKM=0
+.ENDC
+
+.IIF NDF,SNG		FFUN=0
+.IIF LE,PRC-EIS	FFUN=0

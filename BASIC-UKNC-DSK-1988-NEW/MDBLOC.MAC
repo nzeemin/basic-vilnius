@@ -1,0 +1,6 @@
+﻿
+	MDINIT::
+		MOV	#ILCDO,@#ILCODW
+		RETURN
+
+	.END
