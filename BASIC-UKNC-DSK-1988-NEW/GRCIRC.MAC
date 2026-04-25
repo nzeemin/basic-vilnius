@@ -758,7 +758,7 @@ ANG:	MOV	R4,-(SP)
 	MOV	R4,SAVJMP
 	MOV	12(SP),-(SP)
 	MOV	12(SP),-(SP)
-	JSR	R4,STAND
+	JSR	R4,STAND	; выполнить шитый код
 	.WORD	KOS, 2$,IR,MLR,RI,3$,4$
 	.WORD	SING,5$,IR,MLR,RI,3$,6$
 2$:	MOV	6(SP),-(SP)
@@ -859,9 +859,10 @@ $VALUE: MOV	R4,-(SP)
 	MOV	R1,R5
 	MOV	@R4,@SP
 	MOV	-(R4),-(SP)
-	JSR	R4,STAND
-	.WORD	RI,1$
-
+	JSR	R4,STAND	; выполнить шитый код
+	.WORD	RI		; плавающее в целое
+	.WORD	1$
+;
 1$:	MOV	R5,R1
 9$:	MOV	6(SP),R4
 	MOV	(SP)+,4(SP)

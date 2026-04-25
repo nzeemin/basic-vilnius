@@ -115,8 +115,8 @@ START::
 	MOV	@#AVPK,(R0)+
 	MOV	@#AVPK+2,(R0)+
 
-	MOV	@#FLOATW,(0)+
-	MOV	@#FLOATW+2,(0)+
+	MOV	@#FLOATW,(0)+	; Сохраняем обработчик ошибок FIS
+	MOV	@#FLOATW+2,(0)+	; и его PSW
 	CLR	@#BRKFLG		;ЗАПРЕТИТЬ BREAK (ДЛЯ УК)
 
 	MOV	#ABRKW,@#AMEM
@@ -209,8 +209,8 @@ ADDRMN::TRAP	106
 	MOV	(R0)+,@#AVPK
 	MOV	(R0)+,@#AVPK+2
 
-	MOV	(0)+,@#FLOATW
-	MOV	(0)+,@#FLOATW+2
+	MOV	(0)+,@#FLOATW	; Восстанавливаем обработчик ошибок FIS
+	MOV	(0)+,@#FLOATW+2	; и его PSW
 
 	MOV	#ABRKW,@#AMEM
 	MOV	(0)+,@#DMEM
@@ -305,11 +305,11 @@ MOV	#100,@#ARSK
 	MOV	#340,2(R0)
 
 ;---
-	MOV	#FLOATW,R0
+	MOV	#FLOATW,R0	; Адрес обработчика ошибок FIS
 4$:	.BJSR	RSTVCT
 	BCC	4$
-	MOV	#FERRI,@R0
-	MOV	#340,2(R0)
+	MOV	#FERRI,@R0	; Устанавливаем обработчик ошибок FIS
+	MOV	#340,2(R0)	; PSW для обработчика ошибок FIS
 
 	MOV	#PARAM+4,R0
 	MOV	#STOPEN,@R0
