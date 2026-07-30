@@ -37,20 +37,24 @@
 	.GLOBL	CISLO,ATCONV
 	.GLOBL	SETCRT
 
-;
-TRAP::	MOV	R0,-(SP)
-	MOV	R2,-(SP)
-	MOV	4(SP),R0
-	MOV	-2(R0),R2
-	BIC	#177400,R2
-	SUB	#100,R2
-	BLT	ERROR
-	ASL	R2
-	CALL	@ATRAP(R2)
-	MOV	R0,4(SP)
-TREND:	MOV	(SP)+,R2
-	MOV	(SP)+,R0
-	RTI
+; TRAP – обработчик программных прерываний (инструкции TRAP).
+; Используется для вызова встроенных функций и операторов языка BASIC.
+; Вектор прерывания (34) устанавливается в MONIT.MAC.
+; При вызове TRAP процессор сохраняет в стеке: PSW, затем PC (адрес следующей инструкции).
+; В нашем случае после TRAP обычно следует слово с номером функции.
+TRAP::	MOV	R0,-(SP)	; сохранить R0
+	MOV	R2,-(SP)	; сохранить R2
+	MOV	4(SP),R0	; R0 = адрес инструкции после TRAP
+	MOV	-2(R0),R2	; R2 = код инструкции TRAP
+	BIC	#177400,R2	; оставить младшие 8 бит - номер TRAP
+	SUB	#100,R2		; вычесть 64.
+	BLT	ERROR		; если номер < 100, то этот TRAP сообщает об ошибке
+	ASL	R2		; умножить на 2
+	CALL	@ATRAP(R2)	; вызвать подпрограмму из таблицы ATRAP
+	MOV	R0,4(SP)	; ??
+TREND:	MOV	(SP)+,R2	; восстановить R2
+	MOV	(SP)+,R0	; восстановить R0
+	RTI			; возврат из прерывания (восстанавливает PSW и PC)
 ;
 ERROR::
 	CLR	IODEV
@@ -106,18 +110,18 @@ GETERR:	MOV	#12,R0
 ERR:	.BYTE	'o+200,'[+200,'I+200,'B+200,'K+200,'A+200,' ,7
 	.EVEN
 ;
-ATRAP::	.WORD	T100
+; Таблица адресов обработчика TRAP
+ATRAP::	.WORD	T100		; парсинг выражения
 	.WORD	T101
 	.WORD	T102
 	.WORD	T103
 	.WORD	T104
 	.WORD	T105
-	.WORD	T106
+	.WORD	T106		; конец оператора
 	.WORD	T107
 	.WORD	T110
-
 	.WORD	T111
-	.WORD	T112
+	.WORD	T112		; пропуск пробелов
 	.WORD	T113
 	.WORD	T114
 	.WORD	T115
@@ -130,8 +134,8 @@ ATRAP::	.WORD	T100
 	.WORD	T124
 	.WORD	T125
 	.WORD	T126
-	.WORD	T127
-	.WORD	T130
+	.WORD	T127		; (
+	.WORD	T130		; )
 ;
 RWMOD:	.ASCII	/MOD /
 RWLOG:	.ASCII	/NOT IMP EQV XOR OR AND /
@@ -155,6 +159,7 @@ ADDRBR::.WORD	EQ,GT,LT,GE,LE,NE,0
 ;
 ADLOG::	.WORD	IMP,EQV,XOR,OR,AND
 ;
+; TRAP 100
 T100:
 	CMP	SP,#500
 	BLO	5$
@@ -381,7 +386,7 @@ OPER:
 ;
 ;----------TIK SU VARPTR------------
 33$:	TRAP	5
-34$:	TRAP	127	;(
+34$:	TRAP	127		; (
 	CLR	R4
 	TRAP	107
 	NOP
@@ -410,7 +415,7 @@ OPER:
 	SUB	#60,R5
 	ADD	R5,@SP
 40$:	ADD	#22,@SP
-	TRAP	127	;(
+	TRAP	127		; (
 	CMP	@SP,#70
 	BGT	42$
 41$:	TRAP	100
@@ -434,7 +439,7 @@ OPER:
 ;------------------------------
 44$:	INC	TYPE
 45$:	MOV	@SP,R5
-46$:	TRAP	130	;)
+46$:	TRAP	130		; )
 	BR	6$
 47$:	ADD	#2,@SP
 	CMP	@SP,#74
@@ -451,12 +456,12 @@ OPER:
 	BR	45$
 49$:	TRAP	125
 	BR	45$
-5$:	TRAP	127
+5$:	TRAP	127		; (
 	CMP	R5,#6
 	BLT	48$
 	BEQ	49$
 	TRAP	100
-	TRAP	130
+	TRAP	130		; )
 	MOV	(SP),R5
 	CMP	R5,#26
 	BLE	52$
@@ -481,11 +486,14 @@ OPER:
 	CALL	@ATCONV(R5)
 	BR	60$
 OP2:	TRAP	100
+;
+; TRAP 130 - парсинг закрывающей скобки
 T130:
 OP3:	CMPB	(R3)+,#')
 	BEQ	SKLUZ
 OP4:	TRAP	2
 ;
+; TRAP 127 - парсинг открывающей скобки
 T127:
 	TRAP	112
 	CMPB	(R3)+,#'(
@@ -557,7 +565,7 @@ T103:
 1$:	MOV	(SP)+,R4
 	MOV	(SP)+,R5
 	MOV	(SP)+,TYPE
-	TRAP	130
+	TRAP	130		; )
 	BR	8$
 2$:	TST	R4
 	BEQ	7$
@@ -684,6 +692,7 @@ T105:	MOV	R3,-(SP)
 5$:	BIS	#20000,R5
 	DEC	TYPE
 	RETURN
+
 APLMI::	.WORD	ADR,SUB,SUM,SKIRT
 ADGDL::	.WORD	DVR,MLR,SAND
 AFUN::	.WORD	PI,POINT,INP,PEEK,RAN,SQRG,SING,KOS,TANG,ATANG,EXPG
@@ -694,8 +703,8 @@ AFUN::	.WORD	PI,POINT,INP,PEEK,RAN,SQRG,SING,KOS,TANG,ATANG,EXPG
 	.WORD	SLPOS,ILPOS,$FRE,SFRE,IFRE
 	.WORD	LEN,ASC,VAL,INSTR2,INSTR
 ;
+; TRAP 106 - конец оператора
 T106:
-
 	TRAP	112
 	TST	4(SP)
 	BEQ	2$
@@ -706,6 +715,8 @@ T106:
 2$:	RETURN
 1$:	TRAP	2
 ;
+; TRAP 107 - разбор списка переменных через запятую (DIM, NEXT).
+; R4 - счётчик/лимит от вызывающего кода. Каждая переменная компилируется через TRAP 103.
 T107:
 	MOV	R4,R2
 	TRAP	112
@@ -736,6 +747,9 @@ T107:
 4$:	TST	-(R1)
 	RETURN
 ;
+; TRAP 110 - разбор номера строки (для GOTO/GOSUB/RUN/RESTORE и т.п.).
+; Накапливает цифры в R5 (R5 = R5*10 + цифра), проверяет переполнение (>14631 - максимум).
+; Через возврат-со-сдвигом R0 сообщает вызывающему коду, был ли номер строки указан.
 T110:	CLR	R5
 	TRAP	112
 	TRAP	102
@@ -761,6 +775,8 @@ T110:	CLR	R5
 3$:	TST	(R0)+
 	RETURN
 ;
+; TRAP 111 - поиск номера строки R5 в таблице строк программы (FCB..TABTOP).
+; Используется вслед за TRAP 110, чтобы проверить, что строка с таким номером существует.
 T111:
 	MOV	FCB,R4
 	TST	-(R4)
@@ -779,6 +795,11 @@ T112:	CMPB	(R3)+,#40
 	DEC	R3
 	RETURN
 ;
+; TRAP 113 - сравнение текущего слова во входном тексте со списком ключевых слов.
+; Операнд после TRAP: адрес таблицы строк-ключевых слов (см. .T 113 / .WORD tbl / .BYTE n,default).
+; При совпадении с i-м словом или при отсутствии совпадения (default) выбирает,
+; на сколько слов вперёд возобновить выполнение после TRAP (через сдвиг R0) -
+; так реализован разбор конструкций вида THEN/GOTO, TO/STEP и т.п.
 T113:	MOV	R1,-(SP)
 	MOV	R3,-(SP)
 	MOV	#-1,-(SP)
@@ -891,7 +912,7 @@ S2:	TST	(SP)+
 ;
 SIMFUN:	ASR	R5	;MID$
 	BEQ	10$
-	TRAP	127
+	TRAP	127		; (
 	DEC	R5
 	BNE	S30
 	TRAP	115
@@ -922,7 +943,7 @@ S30:	DEC	R5	;STRING$
 31$:	TRAP	125
 	MOV	#ALLSK,(R1)+
 S32:	INC	R2
-S33:	TRAP	130
+S33:	TRAP	130		; )
 	BR	S10
 ;
 S40:	DEC	R5	;STR$
@@ -937,7 +958,7 @@ S40:	DEC	R5	;STR$
 ASTR:	.WORD	SSTR,	ISTR
 ASFINT:	.WORD	CHR,	BIN,	OCT,	HEX
 ;
-LMID::	TRAP	127
+LMID::	TRAP	127		; (
 	CLR	R4
 	TRAP	107
 	BR	10$
@@ -955,7 +976,7 @@ MIDEND:	MOV	R5,-(SP)
 	MOV	#STR,(R1)+
 	BR	12$
 11$:	MOV	#STR2,(R1)+
-12$:	TRAP	130
+12$:	TRAP	130		; )
 	MOV	(SP)+,R5
 	RETURN
 ;
@@ -969,7 +990,7 @@ USR:	TRAP	112
 	ASL	R2
 1$:	CMP	R5,#72	;-2(4) VARPTR,INSTR
 	BEQ	SYNERR
-	TRAP	127
+	TRAP	127		; (
 	TRAP	122
 	BR	2$
 	TST	R4
@@ -979,7 +1000,7 @@ USR:	TRAP	112
 2$:	TRAP	100
 3$:	MOV	#$USR,(R1)+
 	MOV	R2,(R1)+
-	TRAP	130
+	TRAP	130		; )
 	MOV	TYPE,(R1)+
 	RETURN
 4$:	CMP	R5,#72	;-2(4)
@@ -1012,7 +1033,7 @@ USR:	TRAP	112
 5$:	INC	R2
 	CMPB	@R3,#',
 	BEQ	40$
-6$:	TRAP	130
+6$:	TRAP	130		; )
 7$:	MOV	#FNCALL,(1)+
 	MOV	R1,R4
 	TST	(1)+
