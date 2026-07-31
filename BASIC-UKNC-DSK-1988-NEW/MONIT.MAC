@@ -1402,7 +1402,9 @@ GRBCOL::CLR	R4
 6$:	MOV	R1,TXEND	; новый конец текста
 	INC	R1
 	BIC	#1,R1		; выровнять по слову
-	MOV	R1,ENDCOD
+	MOV	R1,ENDCOD	; ВАЖНО: R1 остаётся равным ENDCOD и на выходе -
+				; LRUN (COMP.MAC) использует это как начальное
+				; значение указателя записи кода
 	CALL	STOPEN
 	RETURN
 ;
