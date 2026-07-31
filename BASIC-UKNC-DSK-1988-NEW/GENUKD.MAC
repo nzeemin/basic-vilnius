@@ -69,13 +69,13 @@
 			;
 	STACK	=1000	;	.IF EQ,STACK-1000 (2000)
 ;-----------------------;
-.IF EQ,MASINA-UK
+    .IF EQ,MASINA-UK
 	MSX=MASINA
 	UKM=MASINA
-.IFF
+    .IFF
 	MSX=0
 	UKM=0
-.ENDC
+    .ENDC
 
 .IIF NDF,SNG		FFUN=0
 .IIF LE,PRC-EIS	FFUN=0
