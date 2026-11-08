@@ -7,72 +7,72 @@
 ;-----------------------------------------------------
 ;
 PACK::	MOV	@SP,R3
-	CLR	@SP
+	CLR	@SP		; на месте адреса возврата - слово 26(SP) (признак знака мантиссы)
+	CLR	-(SP)		; ещё два слова: 24(SP) - десятичный порядок, 22(SP) - слово статуса результата
 	CLR	-(SP)
-	CLR	-(SP)
-	MOV	R3,-(SP)
-	MOV	R0,-(SP)
+	MOV	R3,-(SP)	; адрес возврата обратно наверх
+	MOV	R0,-(SP)	; сохранить регистры R0-R5
 	MOV	R1,-(SP)
 	MOV	R2,-(SP)
 	MOV	R3,-(SP)
 	MOV	R4,-(SP)
 	MOV	R5,-(SP)
-	MOV	#-18.,-(SP)
-	MOV	#101,-(SP)
-	MOV	32(SP),R5
-	ADD	R5,30(SP)
-	CLR	R0
+	MOV	#-18.,-(SP)	; 2(SP) = -18.: счётчик значащих цифр (после 18 цифр остальные только считаются)
+	MOV	#101,-(SP)	; (SP) = двоичный порядок, начальное 65 (мантисса - 64-битное целое R0:R1:R2:R3)
+	MOV	32(SP),R5	; R5 = адрес текста (32(SP))
+	ADD	R5,30(SP)	; 30(SP) = адрес конца текста (адрес + длина)
+	CLR	R0		; R0:R1:R2:R3 - мантисса, обнулить
 	CLR	R1
 	CLR	R2
 	CLR	R3
-1$:	CMP	R5,30(SP)
+1$:	CMP	R5,30(SP)	; текст кончился?
 	BGE	17$
-	MOVB	(R5)+,R4
+	MOVB	(R5)+,R4	; очередной символ
 ;	CMPB	R4,#40
 ;	BEQ	1$
 ;
-	CMPB	R4,#'+
+	CMPB	R4,#'+		; '+'?
 	BEQ	7$
-	CMPB	R4,#'-
+	CMPB	R4,#'-		; '-'?
 	BNE	4$
-	INC	26(SP)
+	INC	26(SP)		; признак знака 26(SP)
 	BR	7$
 ;
 3$:	MOVB	(R5)+,R4
 ;	CMPB	R4,#40
 ;	BEQ	7$
-4$:	SUB	#60,R4
-	BLT	15$
-	BNE	5$
-	CMP	2(SP),#-18.
+4$:	SUB	#60,R4		; символ -> цифра (минус код '0')
+	BLT	15$		; меньше '0' (в т.ч. '.') =>
+	BNE	5$		; ноль?
+	CMP	2(SP),#-18.	; ведущие нули не считать (пока цифр нет)
 	BNE	5$
 	TSTB	23(SP)
 	BEQ	7$
 	DEC	24(SP)
 	BR	7$
-5$:	CMPB	R4,#11
+5$:	CMPB	R4,#11		; не цифра (больше 9)?
 	BGT	18$
-	INC	2(SP)
-	BGT	7$
-	CALL	PDAUG5
-	CALL	PDAUG2
-	ADD	R4,R3
-	ADC	R2
-	ADC	R2
-	ADC	R0
-7$:	CMP	R5,30(SP)
+	INC	2(SP)		; ещё одна цифра в мантиссе (счётчик)
+	BGT	7$		; уже больше 18 цифр - только считать =>
+	CALL	PDAUG5		; мантисса *5
+	CALL	PDAUG2		; и *2: всего *10
+	ADD	R4,R3		; прибавить цифру
+	ADC	R2		; перенос из R3 (цифра прибавлена) в R2
+	ADC	R2		; ещё раз R2 (вероятно, должно быть ADC R1 - возможная ошибка оригинала, не проверено)
+	ADC	R0		; и в старшее слово
+7$:	CMP	R5,30(SP)	; текст кончился?
 	BLT	3$
 	BR	6$
 ;
-32$:	TSTB	27(SP)
+32$:	TSTB	27(SP)		; знак порядка?
 	BEQ	24$
-	NEG	R3
-24$:	ADD	R3,24(SP)
+	NEG	R3		; отрицательный порядок
+24$:	ADD	R3,24(SP)	; добавить порядок к десятичному порядку
 	MOV	32(SP),R3
 ;
 8$:	DEC	R5
-6$:	MOV	R5,10(SP)
-	TST	R0
+6$:	MOV	R5,10(SP)	; R5 -> 10(SP): запомнить конец разобранного текста (вернётся в R3)
+	TST	R0		; мантисса равна нулю?
 	BNE	9$
 	TST	R1
 	BNE	9$
@@ -80,35 +80,35 @@ PACK::	MOV	@SP,R3
 	BNE	9$
 	TST	R3
 	BEQ	17$
-9$:	TSTB	23(SP)
+9$:	TSTB	23(SP)		; точка в числе была?
 	BEQ	2$
-	NEG	2(SP)
-2$:	TST	2(SP)
-	BGE	11$
-	CLR	2(SP)
-11$:	ADD	24(SP),2(SP)
-	BGT	12$
-	BLT	25$
-	JMP	30$
+	NEG	2(SP)		; 2(SP) = -(счётчик цифр); с 24(SP) (счётчик до точки + порядок) даст десятичный порядок
+2$:	TST	2(SP)		; счётчик отрицательный (цифр не больше 18)?
+	BGE	11$		; да - отброшенных цифр нет
+	CLR	2(SP)		; обнулить
+11$:	ADD	24(SP),2(SP)	; 2(SP) = десятичный порядок d: число = мантисса * 10^d
+	BGT	12$		; d > 0 - умножать на 10 =>
+	BLT	25$		; d < 0 - делить на 10 =>
+	JMP	30$		; d = 0 - сразу нормализация
 ;
-12$:	CMP	R0,#31462
-	BHI	14$
-	CALL	PDAUG5
-	INC	(SP)
-13$:	DEC	2(SP)
-	BGT	12$
-	JMP	30$
+12$:	CMP	R0,#31462	; мантисса меньше 31462 (окт., ~0.2 от 2^64): умножение на 5 не переполнит?
+	BHI	14$		; нет - через 5/4 =>
+	CALL	PDAUG5		; мантисса * 5
+	INC	(SP)		; двоичный порядок + 1 (10 = 5 * 2)
+13$:	DEC	2(SP)		; d - 1
+	BGT	12$		; ещё d > 0 - повторить
+	JMP	30$		; => нормализация и упаковка
 ;
-14$:	CALL	PD5DL4
-	ADD	#3,(SP)
+14$:	CALL	PD5DL4		; мантисса * 5/4 (со сдвигом при переполнении)
+	ADD	#3,(SP)		; двоичный порядок + 3 (10 = 5/4 * 8)
 	BR	13$
 ;
-15$:	CMPB	R4,#-2
+15$:	CMPB	R4,#-2		; точка ('.' - '0' = -2)?
 	BNE	8$
-	TSTB	23(SP)
+	TSTB	23(SP)		; точка уже была?
 	BNE	8$
-	COMB	23(SP)
-	MOV	2(SP),24(SP)
+	COMB	23(SP)		; отметить: точка встречена
+	MOV	2(SP),24(SP)	; запомнить число цифр до точки
 	BR	7$
 ;
 16$:	CLR	R0
@@ -117,21 +117,21 @@ PACK::	MOV	@SP,R3
 	CLR	R3
 17$:	JMP	31$
 ;
-18$:	BICB	#40,R4
-	SUB	#24,R4
+18$:	BICB	#40,R4		; буква: привести к заглавной
+	SUB	#24,R4		; 'D' или 'E' (код - '0' - 20 окт.)?
 	BEQ	19$
 	DEC	R4
 	BNE	8$
 19$:	CMPB	(R5),#100	;ELSE OR NAME?
 	BGT	8$
-	BICB	#40,-(R5)
-	MOVB	(R5)+,22(SP)
-10$:	MOVB	(R5)+,R4
+	BICB	#40,-(R5)	; заглавная буква экспоненты
+	MOVB	(R5)+,22(SP)	; запомнить букву порядка в 22(SP) (E - бит 0 = 1: одинарная точность)
+10$:	MOVB	(R5)+,R4	; знак порядка и цифры порядка
 	CMP	R5,30(SP)
 	BHI	8$
 ;	CMPB	R4,#40
 ;	BEQ	10$
-	MOV	R3,32(SP)
+	MOV	R3,32(SP)	; R3 (мл. слово мантиссы) временно в 32(SP): R3 нужен для числа порядка
 	CLR	R3
 	CMPB	R4,#'+
 	BEQ	20$
@@ -141,41 +141,41 @@ PACK::	MOV	@SP,R3
 20$:	MOVB	(R5)+,R4
 	CMP	R5,30(SP)
 	BHI	32$
-22$:;	CMPB	R4,#40
+22$:				;	CMPB	R4,#40
 ;	BEQ	20$
 	SUB	#60,R4
 	BLT	32$
 	CMPB	R4,#11
 	BGT	32$
-	CMP	R3,#500
+	CMP	R3,#500		; порядок < 500?
 	BHIS	20$
-	ASL	R3
+	ASL	R3		; порядок = порядок*10 + цифра
 	ADD	R3,R4
 	ASL	R3
 	ASL	R3
 	ADD	R4,R3
 	BR	20$
 ;
-34$:	TRAP	6
+34$:	TRAP	6		; ошибка 6 - переполнение
 ;
-25$:	TST	R0
-	BLT	27$
-26$:	DEC	(SP)
-	CALL	PDAUG2
-	BPL	26$
-27$:	CALL	DG4DL5
-	SUB	#3,(SP)
-	INC	2(SP)
-	BLT	25$
+25$:	TST	R0		; d < 0: делить на 10; старший бит мантиссы установлен?
+	BLT	27$		; да - делить сразу =>
+26$:	DEC	(SP)		; двоичный порядок - 1
+	CALL	PDAUG2		; сдвиг мантиссы влево (нормализация, чтобы не терять точность)
+	BPL	26$		; пока старший бит не установлен
+27$:	CALL	DG4DL5		; мантисса * 4/5
+	SUB	#3,(SP)		; двоичный порядок - 3 (/10 = *4/5 /8)
+	INC	2(SP)		; d + 1
+	BLT	25$		; ещё d < 0 - повторить
 ;
-30$:	DEC	(SP)
-	CALL	PDAUG2
+30$:	DEC	(SP)		; нормализация: порядок - 1 за каждый сдвиг влево,
+	CALL	PDAUG2		; пока старший единичный бит не выйдет в C (скрытый бит)
 	BCC	30$
-	ADD	#200,(SP)
-	BLE	16$
-	CMP	(SP),#377
-	BGT	34$
-	CLRB	R3
+	ADD	#200,(SP)	; порядок + 200 окт. (смещение 128)
+	BLE	16$		; порядок <= 0 - число слишком мало, результат 0 =>
+	CMP	(SP),#377	; слишком велик (больше 377)?
+	BGT	34$		; ошибка 6 =>
+	CLRB	R3		; упаковка: мантисса сдвигается на байт вправо, порядок (SP)
 	BISB	R2,R3
 	SWAB	R3
 	CLRB	R2
@@ -185,28 +185,28 @@ PACK::	MOV	@SP,R3
 	BISB	R0,R1
 	SWAB	R1
 	CLRB	R0
-	BISB	(SP),R0
+	BISB	(SP),R0		; вставляется в старший байт R0 (знак, 8 бит порядка, 55 бит мантиссы)
 	SWAB	R0
-	ROR	26(SP)
-	CALL	PDAL2
-	ADC	R3
+	ROR	26(SP)		; знак числа -> C
+	CALL	PDAL2		; вращение вправо через C: знак в старший бит, младший бит - в C
+	ADC	R3		; округление: прибавить выдвинутый бит
 	ADC	R2
 	ADC	R1
 	ADC	R0
-	BVS	34$
-	BCS	34$
-31$:	MOV	R0,24(SP)
+	BVS	34$		; переполнение =>
+	BCS	34$		; переполнение =>
+31$:	MOV	R0,24(SP)	; результат: 4 слова вместо аргументов
 	MOV	R1,26(SP)
 	MOV	R2,30(SP)
 	MOV	R3,32(SP)
-	CMP	(SP)+,(SP)+
-	MOV	(SP)+,R5
+	CMP	(SP)+,(SP)+	; снять слова локальных переменных
+	MOV	(SP)+,R5	; восстановить регистры
 	MOV	(SP)+,R4
 	MOV	(SP)+,R3
 	MOV	(SP)+,R2
 	MOV	(SP)+,R1
 	MOV	(SP)+,R0
-	RETURN
+	RETURN			; в вызывающую; сверху слово статуса (бит 0 - была буква E)
 ;
 ;---------------------------------------------------------
 ;	ПОДПРОГРАММА РАСПАКОВКИ ЧИСЕЛ
@@ -214,26 +214,26 @@ PACK::	MOV	@SP,R3
 ;	В СИМВОЛЬНЫЕ ФОРМАТЫ G,F,E,D
 ;---------------------------------------------------------
 ;
-EGO::	MOV	(SP)+,R5
-	MOV	(SP)+,R0
-	MOV	@SP,R1
-	CLR	R2
+EGO::	MOV	(SP)+,R5	; EGO: число одинарной точности (2 слова) -> текст; R5 - адрес возврата
+	MOV	(SP)+,R0	; R0 = старшее слово
+	MOV	@SP,R1		; R1 = второе слово
+	CLR	R2		; R2:R3 = 0 (младшие слова)
 	CLR	R3
-	MOV	#6,@SP
-	MOV	#42403,-(SP)
-	BR	GO
+	MOV	#6,@SP		; вместо слова на стеке - число значащих цифр: 6
+	MOV	#42403,-(SP)	; слово формата: старший байт 'E' (буква порядка), младший 3
+	BR	GO		; общая часть
 ;
-DGO::	MOV	(SP)+,R5
-	MOV	(SP)+,R0
+DGO::	MOV	(SP)+,R5	; DGO: число двойной точности (4 слова) -> текст
+	MOV	(SP)+,R0	; R0:R1:R2:R3 = число
 	MOV	(SP)+,R1
 	MOV	(SP)+,R2
 	MOV	@SP,R3
-	MOV	#20,(SP)
-	MOV	#42003,-(SP)
-GO:	MOV	#1,-(SP)
-	MOV	#BUFOUT,-(SP)
-	MOV	#30,-(SP)
-	MOV	R5,-(SP)
+	MOV	#20,(SP)	; 16. значащих цифр
+	MOV	#42003,-(SP)	; слово формата: старший байт 'D'
+GO:	MOV	#1,-(SP)	; признак (1)
+	MOV	#BUFOUT,-(SP)	; адрес выходного буфера BUFOUT
+	MOV	#30,-(SP)	; ширина поля 24.
+	MOV	R5,-(SP)	; адрес возврата
 ;
 UNPCK::	MOV	R4,-(SP)
 	MOV	R4,SAVJMP
@@ -387,11 +387,11 @@ UNPEND:	MOVB	#40,(R5)+
 	MOV	R5,2(SP)
 	RETURN
 ;
-DG5DL4:	MOV	R0,-(SP)
+DG5DL4:	MOV	R0,-(SP)	; DG5DL4: R0:R3 (64 бита) * 5/4 = x + x/4; старшие биты выдвигаются в R4
 	MOV	R1,-(SP)
 	MOV	R2,-(SP)
 	MOV	R3,-(SP)
-	CALL	UDAL2
+	CALL	UDAL2		; x/4 - два сдвига вправо
 	CALL	UDAL2
 	ADC	R3
 	ADC	R2
@@ -413,8 +413,8 @@ DG5DL4:	MOV	R0,-(SP)
 	ADC	R4
 	RETURN
 ;
-DG4DL5:	MOV	#20,R4
-	CALL	UDAL2
+DG4DL5:	MOV	#20,R4		; DG4DL5: R0:R3 * 4/5 = 0.8x: сумма x/2^k по двоичной дроби 0.110011...
+	CALL	UDAL2		; x/2
 	MOV	R3,-(SP)
 	MOV	R2,-(SP)
 	MOV	R1,-(SP)
@@ -439,23 +439,23 @@ DG4DL5:	MOV	#20,R4
 	ADD	#10,SP
 	RETURN
 ;
-UDAUG8:	MOV	R5,-(SP)
+UDAUG8:	MOV	R5,-(SP)	; UDAUG8: R0:R3 * 8; выдвинутые старшие биты накапливаются в R4 (целая цифра)
 	MOV	#3,R5
-1$:	CALL	PDAUG2
-	ROL	R4
+1$:	CALL	PDAUG2		; *2
+	ROL	R4		; выдвинутый бит -> R4
 	DEC	R5
 	BGT	1$
 	MOV	(SP)+,R5
 	RETURN
 ;
-ASTER:	TST	(SP)+
+ASTER:	TST	(SP)+		; ASTER: число не помещается в поле - вывести '%' вместо цифр
 	MOV	16(SP),R5
 	MOV	R5,24(SP)
 	MOVB	#'%,(R5)+
 	COM	22(SP)
 	BR	UNPEND
 ;
-ROUND1:	CMP	R5,#24
+ROUND1:	CMP	R5,#24		; ROUND1: округление десятичного результата до R5 цифр (прибавить 0.5 последнего разряда)
 	BGT	4$
 	TST	R5
 	BEQ	5$
@@ -497,7 +497,7 @@ ROUND1:	CMP	R5,#24
 5$:	ADD	#5,R4
 	BR	3$
 ;
-SIGN:	MOV	R5,26(SP)
+SIGN:	MOV	R5,26(SP)	; SIGN: вывести знак ('-' или пробел) в буфер по R5; поля не хватает - ASTER
 	CMP	R5,20(SP)
 	BLO	2$
 	ROR	10(SP)
@@ -514,7 +514,7 @@ SIGN:	MOV	R5,26(SP)
 	BLO	ASTER
 	RETURN
 ;
-NUMB:	CMP	#12,R4
+NUMB:	CMP	#12,R4		; NUMB: вывести цифры целой части
 	BGT	1$
 	MOVB	#'1,(R5)+
 	SUB	#12,R4
@@ -539,14 +539,14 @@ NUMB:	CMP	#12,R4
 4$:	INC	R5
 5$:	RETURN
 ;
-UDAL2:	CLC
-PDAL2:	ROR	R0
+UDAL2:	CLC			; UDAL2: R0:R3 >> 1 (слева 0)
+PDAL2:	ROR	R0		; PDAL2: R0:R3 >> 1 через C (C -> старший бит, младший бит -> C)
 	ROR	R1
 	ROR	R2
 	ROR	R3
 	RETURN
 ;
-PD5DL4:	CMP	R0,#146314
+PD5DL4:	CMP	R0,#146314	; PD5DL4: R0:R3 * 5/4; при R0 >= 146314 (окт., ~0.8) сначала сдвиг вправо и порядок +1 (2(SP))
 	BCS	1$
 	CLC
 	CALL	PDAL2
@@ -561,14 +561,14 @@ PD5DL4:	CMP	R0,#146314
 	CALL	PDAL2
 	BR	PLIUS
 ;
-PDAUG5:	MOV	R0,-(SP)
+PDAUG5:	MOV	R0,-(SP)	; PDAUG5: R0:R3 * 5 = *4 + *1
 	MOV	R1,-(SP)
 	MOV	R2,-(SP)
 	MOV	R3,-(SP)
-	CALL	PDAUG2
-	CALL	PDAUG2
+	CALL	PDAUG2		; *2
+	CALL	PDAUG2		; *2: всего *4
 ;
-PLIUS:	ADD	(SP)+,R3
+PLIUS:	ADD	(SP)+,R3	; PLIUS: прибавить сохранённое x (4 слова)
 	ADC	R2
 	ADC	R1
 	ADC	R0
@@ -580,24 +580,24 @@ PLIUS:	ADD	(SP)+,R3
 	ADD	(SP)+,R0
 	RETURN
 ;
-PDAUG2:	ASL	R3
+PDAUG2:	ASL	R3		; PDAUG2: R0:R3 * 2 (сдвиг влево)
 	ROL	R2
 	ROL	R1
 	ROL	R0
 	RETURN
 ;
-STAND::	TST	(SP)+
+STAND::	TST	(SP)+		; STAND: вход JSR R4,STAND - снять адрес возврата (он не нужен), дальше шитый код по R4
 	JMP	@(R4)+
 ;
-IABS::	TST	@SP
+IABS::	TST	@SP		; IABS: модуль целого
 	BPL	I1
-INEG::	NEG	@SP
+INEG::	NEG	@SP		; INEG: смена знака целого
 I1:	JMP	@(R4)+
 ;
-ABS::	BIC	#100000,@SP
+ABS::	BIC	#100000,@SP	; ABS: сбросить знаковый бит (одинарная/двойная)
 	JMP	@(R4)+
 ;
-ISGN::	MOV	#1,R0
+ISGN::	MOV	#1,R0		; ISGN: знак целого (-1, 0, 1)
 	TST	@SP
 	BEQ	2$
 	BPL	1$
@@ -605,46 +605,46 @@ ISGN::	MOV	#1,R0
 1$:	MOV	R0,@SP
 2$:	JMP	@(R4)+
 ;
-DSGN::	CLR	4(SP)
+DSGN::	CLR	4(SP)		; DSGN: обнулить два младших слова и дальше как SSGN
 	CLR	6(SP)
 ;
-SSGN::	TST	@SP
+SSGN::	TST	@SP		; SSGN: знак одинарной точности: 0 - оставить
 	BEQ	1$
-	ASL	@SP
-	MOV	#100400,@SP
-	ROR	@SP
-	CLR	2(SP)
+	ASL	@SP		; знак -> C
+	MOV	#100400,@SP	; константа 100400
+	ROR	@SP		; ROR: получается +1.0 или -1.0 (040200 со знаком)
+	CLR	2(SP)		; младшее слово 0
 1$:	JMP	@(R4)+
 ;
-ID::	MOV	@SP,R0
+ID::	MOV	@SP,R0		; ID: целое -> двойная: расширить до 4 слов (целое сверху), дальше как IS
 	CLR	@SP
 	CLR	-(SP)
 	MOV	R0,-(SP)
 ;
-IS::	CLR	-(SP)
-	MOV	2(SP),R1
+IS::	CLR	-(SP)		; IS: целое -> одинарная: место под второе слово
+	MOV	2(SP),R1	; R1 = целое
 	BGT	IR1
-	BEQ	IR4
-	NEG	R1
- IR1:	ROL	-(SP)
-	MOV	#220,R2
-	CLRB	4(SP)
- IR2:	ROL	R1
-	BCS	IR3
-	DEC	R2
+	BEQ	IR4		; ноль - результат 0 =>
+	NEG	R1		; модуль (знак учтён в C)
+ IR1:	ROL	-(SP)		; ROL -(SP): знак (C) в новое слово на стеке
+	MOV	#220,R2		; R2 = порядок 220 окт. (128 + 16)
+	CLRB	4(SP)		; очистить поле мантиссы результата
+ IR2:	ROL	R1		; искать старший единичный бит
+	BCS	IR3		; нашли (выдвинут в C - скрытый бит) =>
+	DEC	R2		; порядок - 1
 	BR	IR2
  ;
- IR3:	MOVB	R1,5(SP)
+ IR3:	MOVB	R1,5(SP)	; старший байт мантиссы - в результат
 	CLRB	R1
-	BISB	R2,R1
+	BISB	R2,R1		; порядок
 	SWAB	R1
-	ROR	(SP)+
-	ROR	R1
-	RORB	3(SP)
-	MOV	R1,@SP
+	ROR	(SP)+		; порядок в старший байт R1
+	ROR	R1		; знак из временного слова
+	RORB	3(SP)		; в старший бит R1
+	MOV	R1,@SP		; и младший бит мантиссы
 IR4:	JMP	@(R4)+
 ;
-SD::	MOV	(SP)+,R1
+SD::	MOV	(SP)+,R1	; SD: одинарная -> двойная: два нулевых слова снизу
 	MOV	(SP)+,R2
 	CLR	-(SP)
 	CLR	-(SP)
@@ -652,10 +652,10 @@ SD::	MOV	(SP)+,R1
 	MOV	R1,-(SP)
 	JMP	@(R4)+
 ;
-DI::	MOV	(SP)+,2(SP)
+DI::	MOV	(SP)+,2(SP)	; DI: двойная -> целая: отбросить два младших слова, дальше как SI
 	MOV	(SP)+,2(SP)
  ;
-SI::	CLR	R2
+SI::	CLR	R2		; SI: одинарная -> целая
 	INC	R2
 	MOV	(SP)+,R1
 	ROL	@SP
@@ -665,10 +665,10 @@ SI::	CLR	R2
 	CLRB	R1
 	SWAB	R1
 	SUB	#201,R1
-	BLT	RI1
-	BEQ	RI2
-	CMP	#17,R1
-	BLT	RI3
+	BLT	RI1		; порядок меньше 1: целая часть 0 =>
+	BEQ	RI2		; число = 1.0 =>
+	CMP	#17,R1		; порядок больше 15 =>
+	BLT	RI3		; переполнение =>
 	SWAB	R0
 	CLRB	R0
 	BISB	3(SP),R0
@@ -687,11 +687,11 @@ SI::	CLR	R2
  ;
  RI5:	ROR	(SP)+
 	BCS	RI6
- RI3:	TRAP	6
+ RI3:	TRAP	6		; ошибка 6 - переполнение
  RI1:	CLR	R2
 	BR	RI7
 ;
-PI::	MOV	#64302,-(SP)
+PI::	MOV	#64302,-(SP)	; PI: число пи двойной точности (4 слова)
 	MOV	#121041,-(SP)
 	MOV	#7732,-(SP)
 	MOV	#40511,-(SP)
@@ -777,6 +777,7 @@ ROUND=1
 ;
 ; FLOATING SUBTRACTION
 ;
+; $DSUB$/$B5 - вычитание: смена знака второго операнда и сложение.
 $B5::
 $DSUB$::			; SIMULATE REAL SUBTRACTION
 	TST	-(SP)
@@ -1006,6 +1007,7 @@ RETB1:
 ;
 ; POP REGISTERS FROM STACK AND RETURN WITH RESULT ON THE STACK
 ;
+; $RETAB - возврат результата сложения/вычитания.
 $RETAB::
 	POP	<R0,R1,R2,R3>
 	MOV	(SP)+,R4
@@ -1023,6 +1025,7 @@ $RETAB::
 ; FLOATING ADDITION, EXCEPT THAT THE RESULT EXPONENT IS ON TOP
 ; OF THE STACK.
 ;
+; $FNORM - нормализация результата арифметических операций.
 $FNORM::
 	MOV	(SP)+,R0	; GET RESULT EXPONENT
 2$:
@@ -1112,6 +1115,7 @@ FNORM2:
 	BR	$RETAB		; AND EXIT
 FLTERR:
 	TRAP	6
+; $FLZER - результат ноль.
 $FLZER::
 	CLR	R0		; UNDERFLOW MAKES NUMBER ZERO
 	CLR	R1
@@ -1162,6 +1166,7 @@ $ZERO::
 ;
 ; ENTRY POINT FOR MULTIPLY
 ;
+; $B3 / $DMUL$ - умножение чисел двойной точности.
 $B3::				; SIMULATE DOUBLE REAL MULTIPLICATION
 $DMUL$::
 	TST	-(SP)
@@ -1423,6 +1428,7 @@ $DMUL$::
 ;
 ; ENTRY POINT FOR DIVISION
 ;
+; $B1 / $DDIV$ - деление чисел двойной точности.
 $B1::				; SIMULATE REAL DIVISION
 $DDIV$::			; SAVE ALL REGISTERS
 	TST	-(SP)
@@ -1574,6 +1580,7 @@ ZER1:
 ; FROM HART, "COMPUTER APPROXIMATIONS".
 ;
 .GLOBL	$DMUL$,	$DADD$,	$DDIV$,STAND
+; $B91 - SQR: квадратный корень двойной точности.
 $B91::
 	MOV	R4,-(SP)
 	MOV	R0,-(SP)	; SAVE R0
@@ -1655,7 +1662,7 @@ SQRT0:
 SQRT1:
 	.FLT4	0.59016206
 SQRT2:
-	.FLT4	1.41421356237309504880 ; SQR(2)
+	.FLT4	1.41421356237309504880	; SQR(2)
 SQRERR:
 	TRAP	5
 ;
@@ -1687,6 +1694,7 @@ SQRERR:
 ;	N4
 ;
 .GLOBL	$DADD$,	$DMUL$,	$DDIV$,	$DSUB$,	$FRACT,STAND
+; $B99 - EXP: экспонента двойной точности.
 $B99::				; DOUBLE PRECISION EXPONENTIAL
 	TST	@SP
 	BMI	1$
@@ -1727,7 +1735,7 @@ $B99::				; DOUBLE PRECISION EXPONENTIAL
 ; DO RANGE REDUCTION TO GET 0<=X<1/64
 ;
 $EXP1:
-	MOV	(SP),R1	;	 GET SIGN/EXPONENT/MSB OF MANTISSA
+	MOV	(SP),R1		;	 GET SIGN/EXPONENT/MSB OF MANTISSA
 	MOV	R1,14(SP)	; SET SIGN FLAG
 	BIC	#100000,R1	;TAKE ABSOLUTE VALUE
 	CMP	#36777,R1	; (1/64)*.99999....
@@ -1858,7 +1866,7 @@ OP0:
 	.FLT4	.72134769672177719062488E1
 OP1:
 	.FLT4	.577621944696111185E-1
-EXPTAB:					; EXP COEFFICIENTS
+EXPTAB:				; EXP COEFFICIENTS
 ;
 .SBTTL	SUPPORT ENTRY $B103,	'LN(REAL)' (DOUBLE PRECISION)
 ;
@@ -1882,6 +1890,7 @@ EXPTAB:					; EXP COEFFICIENTS
 .GLOBL	$DMUL$,	$DDIV$,	$DADD$,	$DSUB$,	$APPRX,STAND
 BADLOG:
 	TRAP	5
+; $B103 - LOG: натуральный логарифм двойной точности.
 $B103::				; NATURAL LOG
 	MOV	R4,-(SP)
 	TST	SAVJMP
@@ -1950,7 +1959,7 @@ $B103::				; NATURAL LOG
 ;
 16$:	MOV	20(SP),R0	; GET POWER OF 2 OF ARG
 	BEQ	50$		; NO RANGE REDUCTION HAPPENED
-	MOV	R0,-(SP)		; RECORD SIGN
+	MOV	R0,-(SP)	; RECORD SIGN
 	BPL	20$		; POWER IS POSITIVE
 	NEG	R0		; GET ABSOLUTE VALUE
 ;
@@ -2042,25 +2051,27 @@ LOGTAB:
 ;	N4
 ;
 .GLOBL	$DMUL$,	$DSUB$,	$APPRX,	$FRACT,STAND
-$B95::					; DOUBLE PRECISION COSINE
+; $B95 - COS: косинус двойной точности.
+$B95::				; DOUBLE PRECISION COSINE
 	TST	-(SP)
-	CLR	-(SP)			; CLEAR QUADRANT FLAG
-	ASL	4(SP)			; SIGN OF ARGUMENT INTO CARRY
-	BEQ	ONE			; COS(0.0)=1.0
-	SEC				; COS(X)=SIN(PI/2 + X)
-	BR	SINCOS			; FALL INTO COMMON CODE
+	CLR	-(SP)		; CLEAR QUADRANT FLAG
+	ASL	4(SP)		; SIGN OF ARGUMENT INTO CARRY
+	BEQ	ONE		; COS(0.0)=1.0
+	SEC			; COS(X)=SIN(PI/2 + X)
+	BR	SINCOS		; FALL INTO COMMON CODE
 ONE:
-	MOV	#^F1.0,4(SP)		; FAST RETURN FOR COS(0)
-	BR	SCEXI			; THAT WAS EASY!
-$B93::					; DOUBLE PRECISION SINE
+	MOV	#^F1.0,4(SP)	; FAST RETURN FOR COS(0)
+	BR	SCEXI		; THAT WAS EASY!
+; $B93 - SIN: синус двойной точности (общая часть с косинусом - SINCOS).
+$B93::				; DOUBLE PRECISION SINE
 	TST	-(SP)
-	CLR	-(SP)			; CLEAR QUADRANT/SIGN FLAG
-	ASL	4(SP)			; SIGN OF ARGUMENT INTO CARRY
-	BEQ	SCEXI			; SIN(0.0)=0.0
-	ROL	(SP)			; SIGN FLAG TO LOW BIT OF QUADRANT FLAG
+	CLR	-(SP)		; CLEAR QUADRANT/SIGN FLAG
+	ASL	4(SP)		; SIGN OF ARGUMENT INTO CARRY
+	BEQ	SCEXI		; SIN(0.0)=0.0
+	ROL	(SP)		; SIGN FLAG TO LOW BIT OF QUADRANT FLAG
 SINCOS:
-	ROL	(SP)			; QUADRANT/SIGN NOW KNOWN. (ZERO INTO CARRY)
-	ROR	4(SP)			; TAKE ABSOLUTE VALUE OF ARGUMENT
+	ROL	(SP)		; QUADRANT/SIGN NOW KNOWN. (ZERO INTO CARRY)
+	ROR	4(SP)		; TAKE ABSOLUTE VALUE OF ARGUMENT
 ;
 ; SAVE ALL THE REGISTERS
 ;
@@ -2074,55 +2085,55 @@ SINCOS:
 ;
 ; REDUCE RANGE TO FIRST QUADRANT
 ;
-	FPUSH	20(SP)			; X
-	FPUSH	TWODPI			; 2/PI
-	JSR	R4,STAND		; X=X/(PI/2)
+	FPUSH	20(SP)		; X
+	FPUSH	TWODPI		; 2/PI
+	JSR	R4,STAND	; X=X/(PI/2)
 	.WORD	$DMUL$
-	.WORD	$FRACT			; GET FRACTION PART, INTEGER PART IN R5
+	.WORD	$FRACT		; GET FRACTION PART, INTEGER PART IN R5
 	.WORD	5$
 	.WORD	$DSUB$
 	.WORD	10$
-5$:	ADD	R5,24(SP)		; ADD QUADRANT TO QUADRANT FLAG WORD
-	ASR	24(SP)			; IS ANGLE IN AN ODD QUADRANT?
-	BCC	10$			; NOPE
-	CLR	-(SP)			; YES, SO X=X-1 (SUBTRACT PI/2 FROM ORIGINAL X)
+5$:	ADD	R5,24(SP)	; ADD QUADRANT TO QUADRANT FLAG WORD
+	ASR	24(SP)		; IS ANGLE IN AN ODD QUADRANT?
+	BCC	10$		; NOPE
+	CLR	-(SP)		; YES, SO X=X-1 (SUBTRACT PI/2 FROM ORIGINAL X)
 	CLR	-(SP)
 	CLR	-(SP)
-	MOV	#^F1.0,-(SP)		; 1.0
+	MOV	#^F1.0,-(SP)	; 1.0
 	JMP	@(R4)+
 10$:
-	BIC	#100000,(SP)		; TAKE ABSOLUTE VALUE OF X
-	BEQ	20$			; X=0.0
-	CMP	#^F1E-13,(SP)		; IS ARGUMENT TOO SMALL?
-	BLO	14$			; NUMBER IS REASONABLE
+	BIC	#100000,(SP)	; TAKE ABSOLUTE VALUE OF X
+	BEQ	20$		; X=0.0
+	CMP	#^F1E-13,(SP)	; IS ARGUMENT TOO SMALL?
+	BLO	14$		; NUMBER IS REASONABLE
 ;
 ; SPECIAL CASE OF X VERY TINY.  LIM (X-->0) SIN(X)==X
 ;
-	FPUSH	C0			; QUICK EVALUATION OF POLYNOMIAL
-	JSR	R4,STAND		; AND EXIT
+	FPUSH	C0		; QUICK EVALUATION OF POLYNOMIAL
+	JSR	R4,STAND	; AND EXIT
 	.WORD	$DMUL$
 	.WORD	20$
 ;
 ; EVALUATE POLYNOMIAL
 ;
 14$:
-	FPUSH	0(SP)			; COPY X
-	MOV	#SCTAB,R0		; POINT TO COEFFICIENTS
-	JSR	R4,STAND		; DO SIMPLE POLYNOMIAL APPROXIMATION P(X^2)
+	FPUSH	0(SP)		; COPY X
+	MOV	#SCTAB,R0	; POINT TO COEFFICIENTS
+	JSR	R4,STAND	; DO SIMPLE POLYNOMIAL APPROXIMATION P(X^2)
 	.WORD	$APPRX
-	.WORD	$DMUL$			; SIN=X*P(X^2)
+	.WORD	$DMUL$		; SIN=X*P(X^2)
 	.WORD	20$
 ;
 ; CALCULATE SIGN OF RESULT
 ;
 20$:
-	ASL	(SP)			; SIGN TO CARRY
-	BEQ	30$			; RESULT IS 0.0
-	ADC	24(SP)			; PROPAGATE SIGN
-	ASR	24(SP)			; SIGN FLAG TO CARRY
-	ROR	(SP)			; SIGN TO RESULT
+	ASL	(SP)		; SIGN TO CARRY
+	BEQ	30$		; RESULT IS 0.0
+	ADC	24(SP)		; PROPAGATE SIGN
+	ASR	24(SP)		; SIGN FLAG TO CARRY
+	ROR	(SP)		; SIGN TO RESULT
 30$:
-	FPOP	26(SP)			; POP RESULT INTO RESULT SLOT
+	FPOP	26(SP)		; POP RESULT INTO RESULT SLOT
 ;
 ; CLEAN UP STACK AND EXIT
 ;
@@ -2133,7 +2144,7 @@ SINCOS:
 	CLR	SAVJMP
 2$:	MOV	(SP)+,R5
 SCEXI:
-	CMP	(SP)+,(SP)+		; QUADRANT/SIGN FLAG
+	CMP	(SP)+,(SP)+	; QUADRANT/SIGN FLAG
 	JMP	@(R4)+
 ;
 ; COEFFICIENTS USED TO APPROXIMATE SIN/COS FUNCTIONS
@@ -2149,13 +2160,14 @@ C0:
 	.FLT4	-0.66843217206396E-9
 	.FLT4	 0.587061098171E-11
 SCTAB:
-	.WORD	8.			; ORDER OF POLYNOMIAL
+	.WORD	8.		; ORDER OF POLYNOMIAL
 TWODPI:
-	.FLT4	.63661977236758134307553505349	 ; 2/PI
+	.FLT4	.63661977236758134307553505349	; 2/PI
 ;
 ; THIS ROUTINE PROVEDES THE DOUBLE PRECISION TANGENT OF THE
 ; ARGUMENT PASSED ON THE STACK.
 ;
+; $TAN - TAN: тангенс двойной точности.
 $TAN::
 	MOV	R4,-(SP)
 	MOV	R4,SAVJMP
@@ -2194,6 +2206,7 @@ $TAN::
 ;	N3
 ;	N4
 .GLOBL	$DDIV$,	$DSUB$,	$DADD$,	$APPRX, STAND
+; $B97 - ATN: арктангенс двойной точности.
 $B97::				; DOUBLE PRECISION ARC-TANGENT
 	MOV	R4,-(SP)
 	TST	SAVJMP
@@ -2315,6 +2328,7 @@ ATNTAB:
 ; 	THIS ROUTINE RETURNS TNE RANDOM VALUE
 ;
 ;
+; RAN - RND: генератор случайных чисел (по именам RNDSAV и III - состояние генератора).
 RAN::
 	MOV	R4,SAVJMP
 	TST	@SP
@@ -2454,6 +2468,7 @@ RAN::
 ; THE TRIG FUNCTIONS AND THE EXP ROUTINE TO PERFORM RANGE REDUCTION.  NO
 ; REGISTERS ARE PRESERVED, AND ALL REGISTERS ARE DESTROYED.
 ;
+; $FRACT - дробная часть числа (кто её вызывает - не проверено).
 $FRACT::			; RETURN FRACTION PART
 	MOV	R4,-(SP)
 	MOV	2(SP),R1	; PICK UP NUMBER
@@ -2563,6 +2578,7 @@ $FRACT::			; RETURN FRACTION PART
 ; THIS ROUTINE RETURNS INTEGER PART OF THE ARGUMENT PASSED ON
 ; THE STACK.ALL REGISTERS ARE DESTROYED.
 ;
+; $FIX - FIX(x): целая часть с отбрасыванием дробной.
 $FIX::
 	MOV	R4,SAVJMP
 	MOV	R4,-(SP)	; SAVE RETURN REGISTRE
@@ -2585,6 +2601,7 @@ $FIX1:	FPUSH	0(SP)
 ; THIS ROUTINE RETURNS THE HIGHEST INTEGER VALUE LESS THEN
 ; ARGUMENT PASSED ON THE STACK.
 ;
+; $INT - INT(x): целая часть (до ближайшего меньшего целого).
 $INT::
 	TST	@SP
 	BPL	$FIX
@@ -2632,6 +2649,8 @@ $INT::
 ;
 .GLOBL	$DSUB$,	$DADD$,	$DMUL$,	$DDIV$,STAND
 
+; $APPRX - рациональная аппроксимация по таблице коэффициентов (какие функции
+; её используют - не проверено).
 $APPRX::			; RATIONAL APPROXIMATION
 	TST	-(SP)
 	PUSH	<R1,R2,R3,R4,R5>	; SAVE REGISTERS
@@ -2705,6 +2724,8 @@ $APPRX::			; RATIONAL APPROXIMATION
 ; STACK AND RETURNS THE RESULT OF THE COMPARISON IN THE CONDITION
 ; CODES.
 ;
+; DCMP - сравнение двух чисел двойной точности на стеке; результат - во флагах
+; процессора (как ICMP/SCMP).
 DCMP::
 $B85:				; DOUBLE PRECISION COMPARE
 	CMP	10(SP),@SP	; COMPARE FIRST WORDS
@@ -2728,8 +2749,8 @@ $B85:				; DOUBLE PRECISION COMPARE
 ; FIRST ARG LOWER THAN SECOND ARG.  RESULT IS NEGATED SECOND ARG
 ;
 10$:
-	NEG	@SP			;NEGATE SIGN OF SECOND ARG.
-	MOV	@SP,10(SP)		;MOV THAT WORD TO FIRST ARG.
+	NEG	@SP		;NEGATE SIGN OF SECOND ARG.
+	MOV	@SP,10(SP)	;MOV THAT WORD TO FIRST ARG.
 ;
 ; FIRST ARG HIGHER THAN SECOND ARG.  RESULT IS FIRST ARG
 ;
@@ -2742,6 +2763,8 @@ $B85:				; DOUBLE PRECISION COMPARE
 ;
 ; THIS ROUTINE RISE REAL NUMBER TO INTEGER POWER
 ;
+; POW - возведение в целую степень: показатель - целое со стека, основание -
+; двойной точности.
 POW::	MOV	@SP,-(SP)
 	BGE	1$
 	NEG	@SP

@@ -9,7 +9,7 @@
 	.GLOBL	ENDPRG,STAR,LENT,TABTOP,NEWLIN,LYGIS,POKJMP,OUTJMP,TMP,$SQUEE
 	.GLOBL	COLR,COLF,JCLS,SET,RESET,COLRET,LSTP,LSET,RECSET,BOXSET
 	.GLOBL	SPFORM,RSP,VIDSP,$PAINT,STP,CURCOR,USRTAB,$DEFUS,STRSIZ
-	.GLOBL	AOPSUB,AOPMON,OPRNAM,MIDMOV,NEWSTR,$KEY;KEYISV,KEYON,KEYOFF
+	.GLOBL	AOPSUB,AOPMON,OPRNAM,MIDMOV,NEWSTR,$KEY	;KEYISV,KEYON,KEYOFF
 	.GLOBL	ONJSR,ONJMP,OPFOR,OPINP,OPOUT,CLOFIL,DEVICE,CLRDEV,DEVLP
 	.GLOBL	ANG1,ANG01,ANG2,ANG02,ASPINT,ASPDBL,ASPSNG,ASP0,$ARC
 	.GLOBL	INIPRP,USEROM,DFN,IFNRET,SFNRET,DFNRET,DATBEG,RESTV
@@ -18,115 +18,124 @@
 	;.GLOBL	MTONV,MTOFFV
 	.GLOBL	$DRAW
 ;
-LPRINT::MOV	#DEVLP,(R1)
-	MOV	(R1)+,-(SP)
-	BR	PRI
+; Оператор LPRINT
+LPRINT::MOV	#DEVLP,(R1)	; записать адрес обработчика DEVLP (принтер)
+	MOV	(R1)+,-(SP)	; сохранить его на стеке, продвинуть R1
+	BR	PRI		; => к общему коду PRINT (без объявления устройства)
 ;
-PRINT::	JSR	R2,TSTFLN
-PRI:	CLR	-(SP)
-PR:	TRAP	122
-	BR	10$
+; Оператор PRINT [#файл,] [элемент [;|, элемент]...] [;|,]
+; Элемент - строковый литерал, выражение, TAB(n)/SPC(n), либо позиционирующая
+				; функция позиционирования AT(x,y)/TAB(n) (см. AFNPOZ). ';' печатает элементы подряд без пробела,
+; ',' переходит к следующей зоне печати; висящий разделитель в конце
+; подавляет перевод строки после PRINT (флаг на стеке).
+PRINT::	JSR	R2,TSTFLN	; необязательный номер файла (PRINT #n,...)
+PRI:	CLR	-(SP)		; флаг "подавить перевод строки" (0 - не подавлять)
+PR:	TRAP	122		; это строковое выражение (не обязательно только литерал)?
+	BR	10$		; нет =>
 	CLR	TMP
-	MOV	#LIT,(R1)+
+	MOV	#LIT,(R1)+	; строковое выражение - опкод LIT (вывод строки)
 	CLR	@SP
-	BR	PR
-10$:	TRAP	112
-	TRAP	102
-	BR	59$
-	BR	1$
-2$:	TRAP	100
-	CLR	@SP
-	MOVB	TYPE,R4
-	INC	R4
+	BR	PR		; => к следующему элементу
+10$:	TRAP	112		; пропуск пробелов
+	TRAP	102		; классифицировать след. символ: буква/цифра/иначе
+	BR	59$		; не буква и не цифра =>
+	BR	1$		; буква =>
+2$:	TRAP	100		; цифра (или после разбора спец.случаев) - выражение
+	CLR	@SP		; признак "разделитель в конце" сбросить
+	MOVB	TYPE,R4		; тип выражения,
+	INC	R4		; R4 = 2*(TYPE+1)
 	ASL	R4
-	MOV	AOUTSP(R4),(R1)+
-	BR	PR
-1$:	MOV	R3,R2
-	TRAP	113
+	MOV	AOUTSP(R4),(R1)+	; опкод вывода по типу (строка/число)
+	BR	PR		; => к следующему элементу
+1$:	MOV	R3,R2		; запомнить позицию - вдруг это не ключевое слово
+	TRAP	113		; слово EL, ATN, AT или TAB (R5 = 0, 2, 4, 6)?
 	.WORD	RWPRIN,3003
-	BR	2$
-	SUB	#4,R5
-	BLT	77$
+	BR	2$		; ни одно из них - обычное выражение =>
+	SUB	#4,R5		; R5: AT 0, TAB 2; EL -4, ATN -2
+	BLT	77$		; EL (начало ELSE) или ATN =>
 	CLR	@SP
-	TRAP	127
-	MOV	R5,R2
-	TRAP	125
-	TST	R2
+	TRAP	127		; (
+	MOV	R5,R2		; R2 = 0 для AT, 2 для TAB
+	TRAP	125		; аргумент - целое выражение
+	TST	R2		; AT(x,y) - два аргумента, TAB(n) - один
 	BNE	5$
-	TRAP	126
-	TRAP	125
-5$:	TRAP	130
-	MOV	AFNPOZ(R2),(R1)+
-	BR	PR
-59$:	TRAP	101
+	TRAP	126		; обязательная запятая
+	TRAP	125		; второй аргумент - целое выражение
+5$:	TRAP	130		; )
+	MOV	AFNPOZ(R2),(R1)+	; опкод AT или TAB (таблица AFNPOZ)
+	BR	PR		; => к следующему элементу
+59$:	TRAP	101		; символ '"'?
 	.WORD	PRSPEC
-	BR	58$
-	BR	57$
-58$:	TRAP	101
+	BR	58$		; нет =>
+	BR	57$		; да - вернуть символ, разобрать как выражение (строка в кавычках) =>
+58$:	TRAP	101		; знак '+' или '-' (начало выражения)?
 	.WORD	PLMI
-	BR	6$
-57$:	DEC	R3
+	BR	6$		; нет - разделитель или конец =>
+57$:	DEC	R3		; вернуть знак в текст, разобрать как выражение
 	BR	2$
 6$:	CMPB	@R3,#';
 	BEQ	7$
-	CMPB	@R3,#',
-	BNE	8$
-	MOV	#ZONA,(R1)+
-7$:	INC	@SP
+	CMPB	@R3,#',		; ','?
+	BNE	8$		; ни то, ни другое - конец оператора =>
+	MOV	#ZONA,(R1)+	; ',' - опкод ZONA (переход к следующей зоне печати)
+7$:	INC	@SP		; отметить: печать закончилась разделителем
 	INC	R3
-	BR	PR
-77$:	MOV	R2,R3
-	CMP	R5,#-2
-	BEQ	2$
-8$:	TRAP	106
-	TST	(SP)+
-	BNE	88$
-	MOV	#NEWLIN,(R1)+
+	BR	PR		; => к следующему элементу
+77$:	MOV	R2,R3		; вернуть позицию
+	CMP	R5,#-2		; ATN - начало числового выражения?
+	BEQ	2$		; да - разобрать как выражение =>
+8$:	TRAP	106		; конец оператора
+	TST	(SP)+		; был ли последний элемент с разделителем в конце?
+	BNE	88$		; был разделитель в конце - перевод строки не нужен =>
+	MOV	#NEWLIN,(R1)+	; опкод NEWLIN (перевод строки)
 88$:	JSR	R2,TSTFIL
+; Оператор REM
 REM::	RETURN
 ;
-AFNPOZ:	.WORD	AT,TAB;SPC
+AFNPOZ:	.WORD	AT,TAB		;SPC
 AOUTSP:	.WORD	IOUTSP,DOUTSP,SOUTSP
 ;
-LOCATE::CMPB	@R3,#',
-	BEQ	1$
-	TRAP	125
-11$:	TRAP	116
-	BR	2$
+LOCATE::CMPB	@R3,#',		; первый символ ',' - X пропущен?
+	BEQ	1$		; X пропущен =>
+	TRAP	125		; X указан - целое выражение
+11$:	TRAP	116		; есть ли ",Y"?
+	BR	2$		; Y нет =>
 	CALL	CINT
-	MOV	#AT,(R1)+
-21$:	TRAP	116
-	BR	3$
+	MOV	#AT,(R1)+	; опкод AT (заданы X и Y)
+21$:	TRAP	116		; есть ли третий аргумент (,курсор)?
+	BR	3$		; нет =>
 	CALL	CINT
-	MOV	#LOC,(R1)+
+	MOV	#LOC,(R1)+	; опкод LOC (задан третий параметр)
 	BR	CEND1
 ;
-1$:	MOV	#LOCX,(R1)+
-	BR	11$
-2$:	MOV	#TAB,(R1)+
-	CMPB	(R3),#',
-	BNE	CEND1
-	INC	R3
-	CMPB	(R3),#',
-	BEQ	21$
-	TRAP	24.
-3$:	CMPB	(R3),#',
-	BNE	CEND1
-	TRAP	24.
+1$:	MOV	#LOCX,(R1)+	; опкод LOCX (X пропущен)
+	BR	11$		; => проверить Y
+2$:	MOV	#TAB,(R1)+	; опкод TAB (задан только X)
+	CMPB	(R3),#',	; после X есть ','?
+	BNE	CEND1		; нет - конец
+	INC	R3		; съесть ','
+	CMPB	(R3),#',	; сразу ещё ',' (Y пропущен)?
+	BEQ	21$		; да => третий параметр
+	TRAP	24.		; ошибка - параметр пропущен между запятыми
+3$:	CMPB	(R3),#',	; после Y есть ','?
+	BNE	CEND1		; нет - конец
+	TRAP	24.		; ошибка - лишняя запятая в конце
 ;
-LET::	CLR	R2
+; Оператор LET
+; Оператор LET переменная[(индекс)]=выражение, а также LET MID$(строка,поз[,длина])=выражение.
+LET::	CLR	R2		; R2 - выбор ячейки в таблице AMOV (вид цели присваивания)
 	CLR	R4
-	TRAP	107
-	BR	10$
-	CMP	(R2)+,(R2)+
-	TSTB	TYPE
-	BEQ	11$
-	BMI	1$
-	TST	(R2)+
-11$:	TST	(R2)+
+	TRAP	107		; разобрать имя цели (переменная/массив)
+	BR	10$		; строковая переменная =>
+	CMP	(R2)+,(R2)+	; числовая: R2 += 4
+	TSTB	TYPE		; тип переменной: двойная?
+	BEQ	11$		; да - ещё +2 =>
+	BMI	1$		; целая =>
+	TST	(R2)+		; одинарная: ещё +2
+11$:	TST	(R2)+		; (R2 = 6 для двойной, 8 для одинарной)
 1$:	TSTB	R5
-	BMI	15$
-	MOV	R4,-(SP)
+	BMI	15$		; цель - элемент массива =>
+	MOV	R4,-(SP)	; обычная переменная - запомнить её адрес
 	BR	2$
 10$:	TST	R5
 	BNE	11$
@@ -134,93 +143,108 @@ LET::	CLR	R2
 	TST	-(R1)
 	CALL	LMID
 	MOV	#-1,R5
-15$:	NEG	R2
-2$:	TRAP	112
-	CMPB	(R3)+,#'=
+15$:	NEG	R2		; цель - элемент массива: отрицательное смещение в AMOV
+2$:	TRAP	112		; пропуск пробелов
+	CMPB	(R3)+,#'=	; '=' ?
 	BNE	5$
-	TST	R5
-	BPL	22$
-	TRAP	115
-	TRAP	13.
-	TST	R4
+	TST	R5		; цель строковая (бит 15 имени)?
+	BPL	22$		; нет - числовая =>
+	TRAP	115		; разобрать правую часть - строковое выражение
+	TRAP	13.		; не строка - ошибка 13 (несоответствие типов)
+	TST	R4		; признак результата разбора строки (R4): при необходимости копии в новой памяти
 	BGT	33$
 	BMI	3$
 	TST	R2
 	BEQ	33$
-3$:	CALL	TSTSQZ
+3$:	CALL	TSTSQZ		; вставить TSTSQZ (опкоды $SQUEE/NEWSTR)
 	BR	33$
-22$:	TRAP	100
-	MOV	R2,R4
+22$:	TRAP	100		; правая часть - числовое выражение
+	MOV	R2,R4		; R4 = смещение в AMOV
 	BPL	20$
-	NEG	R4
-20$:	CALL	@ATCONV-4(R4)
-33$:	MOV	AMOV(R2),(R1)+
+	NEG	R4		; для массива - модуль
+20$:	CALL	@ATCONV-4(R4)	; привести значение к типу цели (ATCONV: CINT, CDBL, CSNG)
+33$:	MOV	AMOV(R2),(R1)+	; опкод присваивания по виду цели (см. AMOV)
 	TST	R2
 	BLE	CEND1
-	MOV	(SP)+,(R1)+
+	MOV	(SP)+,(R1)+	; адрес переменной (для скалярных целей)
 	BR	CEND1
 5$:	TRAP	2
 ;
+; Таблица опкодов присваивания: цели-элементы массива (отрицательные индексы)
+; и скаляры (положительные). SMOV копирует 2 слова, поэтому годится и для строки
+; (дескриптор), и для числа одинарной точности (+2 и +10 - один и тот же SMOV).
 	.WORD					SXMOV	;-10
-	.WORD				DXMOV		;-6
-	.WORD			IXMOV			;-4
-	.WORD		$XMOV				;-2
-AMOV:	.WORD	MIDMOV					; 0
-	.WORD		SMOV				;+2
-	.WORD			IMOV			;+4
-	.WORD				DMOV		;+6
+	.WORD				DXMOV	;-6
+	.WORD			IXMOV	;-4
+	.WORD		$XMOV	;-2
+AMOV:	.WORD	MIDMOV		; 0
+	.WORD		SMOV	;+2
+	.WORD			IMOV	;+4
+	.WORD				DMOV	;+6
 	.WORD					SMOV	;+10
 ;
 ATCONV::.WORD			CINT,	CDBL,	CSNG
 ;
 TSTSQZ::TST	TMP
 	BNE	1$
-	MOV	#$SQUEE,(R1)+
-	INC	TMP
-1$:	MOV	#NEWSTR,(R1)+
+	MOV	#$SQUEE,(R1)+	; опкод $SQUEE (уплотнение памяти строк) - один раз на выражение
+	INC	TMP		; отметить в TMP
+1$:	MOV	#NEWSTR,(R1)+	; опкод NEWSTR (новая строка в памяти)
 	RETURN
 ;
-RET::	TRAP	110
-	BR	1$
-	MOV	#RTSTO,(R1)+
-	BR	TO1
-1$:	MOV	#RTS,(R1)+
+; Оператор RETURN
+RET::	TRAP	110		; необязательный номер строки (RETURN <line>)
+	BR	1$		; номера нет => обычный RETURN
+	MOV	#RTSTO,(R1)+	; номер есть - обработчик RTSTO (вернуться и перейти на строку)
+	BR	TO1		; => проверить строку и разрешить ссылку (как для GOTO)
+1$:	MOV	#RTS,(R1)+	; обработчик RTS (обычный возврат из GOSUB)
 	CALL	TSTLYG
-CEND1:	TRAP	106
+CEND1:	TRAP	106		; конец оператора
 	RETURN
 ;
-GOSUB::	MOV	#JSR,(R1)+
-	BR	TO
+; Оператор GOSUB
+GOSUB::	MOV	#JSR,(R1)+	; записать адрес обработчика JSR (переход с сохранением адреса возврата)
+	BR	TO		; => к общему разбору номера строки
 ;
-GO::	MOV	#JMP,(R1)+
+; Оператор GOTO
+GO::	MOV	#JMP,(R1)+	; записать адрес обработчика JMP (безусловный переход)
 ;
-TO:	TRAP	110
-	TRAP	2
-TO1:	TRAP	106
-	TRAP	111
-	BR	2$
-	TRAP	8.
+; Общий разбор "GOTO/GOSUB <номер строки>".
+TO:	TRAP	110		; разобрать номер строки в R5; если цифр нет - не пропускать след. слово
+; TRAP 110 при наличии цифр пропускает следующее слово; если номера строки
+; нет - выполняется TRAP 2.
+	TRAP	2		; ошибка синтаксиса (нет номера строки)
+TO1:	TRAP	106		; конец оператора (или ':' / комментарий)
+	TRAP	111		; искать номер строки R5 в таблице строк программы
+	BR	2$		; строка найдена => продолжить
+	TRAP	8.		; строка не найдена (сюда TRAP 111 попадает пропуском слова)
 2$:	CALL	TSTLYG
-	JSR	R0,SETST
-	BR	5$
-	MOV	#TOTO1,(1)+
+	JSR	R0,SETST	; попытаться сразу разрешить ссылку на строку
+	BR	5$		; строка уже скомпилирована => пропатчить переход на неё
+	MOV	#TOTO1,(1)+	; строка ещё не скомпилирована - отложенная ссылка (заплатка потом)
 	RETURN
-5$:	MOV	@R4,@R1
-	CMP	4(R4),NUMBER
-	BLOS	1$
-	MOV	R1,@R4
-1$:	TST	(R1)+
+5$:	MOV	@R4,@R1		; записать текущий адрес перехода в цепочку по адресу R4
+	CMP	4(R4),NUMBER	; номер строки перехода больше номера текущей строки?
+	BLOS	1$		; нет - ссылка назад, цепочка не нужна =>
+	MOV	R1,@R4		; вперёд - включить это место в цепочку ссылок
+1$:	TST	(R1)+		; пропустить слово перехода
 	RETURN
 TOTO1:	.WORD	ENDPRG
 ;
+; Проверка после GOTO/GOSUB/RETURN на номер вне программы: если идёт
+; выполнение в прямом режиме (не компиляция) и нет отложенных ошибок -
+; сбросить адрес останова; иначе (были ошибки) - TRAP 17.
 TSTLYG:	TSTB	LYGIS
-	BNE	1$
+	BNE	1$		; идёт компиляция программы =>
 	TST	ERRS
-	BNE	2$
+	BNE	2$		; есть отложенные ошибки =>
     	CLR	ADRHLT
 1$:	RETURN
 2$:	TRAP	17.
 ;
+; Общая таблица текстов ключевых слов для TRAP 101/113 (проверка ключевых
+; слов при компиляции разных операторов): RETURN/NEXT/RESTORE (для TSTLYG-
+; подобных проверок), THEN/ELSE (IF), TO/STEP (FOR), AS (OPEN), USR/FN (DEF) и т.д.
 RWREN::	.ASCII	/REM /
 	.ASCII	/RETURN /
 	.ASCII	/NEXT /
@@ -252,55 +276,56 @@ RWLINE:	.ASCII	/B BF /
 ;
 IF::	TRAP	100
 	CALL	CINT
-	TRAP	113	;THEN,GOTO?
+	TRAP	113		;THEN,GOTO?
 	.WORD	RWIF,1002
-	TRAP	2
-	TRAP	102
-	BR	6$
-	BR	6$
+	TRAP	2		; ни THEN, ни GOTO - ошибка синтаксиса
+	TRAP	102		; классифицировать следующий символ: цифра/буква/иначе
+	BR	6$		; буква (начало оператора) =>
+	BR	6$		; не буква и не цифра =>
 	MOV	#IFT,(R1)+	;THEN <LINE NUMBER>
 	MOV	R0,-(SP)
 	CLR	R0
-	CALL	TO
+	CALL	TO		; разобрать и разрешить номер строки (как GOTO)
 	CLR	-(SP)
 	BR	5$
 6$:	MOV	#IFF,(R1)+	;THEN	<STATMENT>
-	MOV	R0,-(SP)
-	MOV	R1,-(SP)
-	TRAP	113
+	MOV	R0,-(SP)	; запомнить R0
+	MOV	R1,-(SP)	; и позицию слова перехода IFF
+	TRAP	113		; ключевое слово оператора после THEN (таблица OPRNAM)?
 	.WORD	OPRNAM
 	.BYTE	2,AOPMON-AOPSUB-2
-	CLR	R5
-	TST	(R1)+
+	CLR	R5		; R5 = 2*номер оператора
+	TST	(R1)+		; оставить слово под адрес перехода (пропатчивается ниже)
 	CLR	R0
-	CALL	@AOPSUB(R5)
+	CALL	@AOPSUB(R5)	; скомпилировать оператор после THEN
 	CLR	R2
 5$:	TRAP	113
 	.WORD	RWIF+12,2	;ELSE?
-	BR	62$
-	TRAP	102
-	BR	50$
-	BR	50$
-	MOV	#22,R5
+	BR	62$		; ELSE нет =>
+	TRAP	102		; ELSE есть - классифицировать следующий символ
+	BR	50$		; буква (начало оператора) =>
+	BR	50$		; не буква и не цифра =>
+	MOV	#22,R5		; цифра - ELSE <НОМЕР СТРОКИ>: код оператора GOTO
 	BR	55$
 50$:	TRAP	113
 	.WORD	OPRNAM
 	.BYTE	2,AOPMON-AOPSUB-2
 	CLR	R5
 55$:	TST	@SP
-	BEQ	4$
-	MOV	#JMP,(R1)+
+	BEQ	4$		; ветка THEN была номером строки (без перехода после) =>
+	MOV	#JMP,(R1)+	; ветка THEN была оператором - вставить переход через ELSE
 	MOV	R1,R2
 	TST	(R1)+
 	MOV	R1,@(SP)+
 	MOV	R2,-(SP)
-4$:	CALL	@AOPSUB(R5)
+4$:	CALL	@AOPSUB(R5)	; скомпилировать ветку ELSE (GOTO номера строки или оператор)
 62$:	MOV	(SP)+,R0
 	BEQ	7$
-	MOV	R1,@R0
+	MOV	R1,@R0		; пропатчить переход JMP (обход ветки ELSE) на конец IF
 7$:	MOV	(SP)+,R0
 	JMP	CEND
 ;
+; Условие .IF EQ,1 ложно: оператор MOTOR в эту сборку не входит.
     .IF EQ,1
 MOTOR::	TRAP	113
 	.WORD	RWMOT
@@ -314,109 +339,116 @@ MOTOR::	TRAP	113
 2$:	BR	CEND
     .ENDC
 ;
-FOR::	CLR	R4
-	TRAP	107
-	TRAP	13.
-	TSTB	R5
-	BMI	SYNERR
-	TRAP	112
-	CMPB	(R3)+,#'=
+; Оператор FOR
+; Оператор FOR var=нач TO кон [STEP шаг]
+FOR::	CLR	R4		; R4 = 0 - ожидается простая переменная (не массив)
+	TRAP	107		; разобрать имя переменной цикла: строковая - без пропуска слова, числовая - с пропуском
+	TRAP	13.		; строковая переменная - ошибка 13 (несоответствие типов)
+	TSTB	R5		; элемент массива?
+	BMI	SYNERR		; да - ошибка синтаксиса
+	TRAP	112		; пропуск пробелов
+	CMPB	(R3)+,#'=	; '=' ?
 	BNE	SYNERR
-	MOV	R4,-(SP)
-	MOVB	TYPE,R2
-	INC	R2
+	MOV	R4,-(SP)	; запомнить адрес переменной цикла
+	MOVB	TYPE,R2		; тип переменной цикла,
+	INC	R2		; R2 = 2*(TYPE+1): 0 - целая, 2 - двойная, 4 - одинарная
 	ASL	R2
-	TRAP	100
-	CALL	@ATCONV(R2)
-	MOV	AMOV+4(R2),(R1)+
-	MOV	@SP,(R1)+
-	TRAP	113
+	TRAP	100		; начальное значение - выражение
+	CALL	@ATCONV(R2)	; привести к типу переменной (ATCONV: CINT, CDBL, CSNG)
+	MOV	AMOV+4(R2),(R1)+	; опкод присваивания IMOV/DMOV/SMOV (таблица AMOV)
+	MOV	@SP,(R1)+	; адрес переменной цикла
+	TRAP	113		; слово TO?
 	.WORD	RWFOR,2
-	TRAP	2
-	TRAP	100
-	CMP	R2,#4
+	TRAP	2		; нет - ошибка синтаксиса
+	TRAP	100		; конечное значение - выражение
+	CMP	R2,#4		; одинарная точность?
 	BNE	10$
-	TST	-(R2)
-10$:	CALL	@ATCONV(R2)
-	TRAP	113
+	TST	-(R2)		; да - предел вычисляется как двойная точность
+10$:	CALL	@ATCONV(R2)	; привести предел к типу
+	TRAP	113		; STEP?
 	.WORD	RWFOR+3,2
-	BR	2$
-	TRAP	100
-	CALL	@ATCONV(R2)
-1$:	MOV	AFOR(R2),(R1)+
-	MOV	#ASTAR+2,(R1)+
-	MOV	(SP)+,(R1)+
-	TSTB	LYGIS
+	BR	2$		; нет - шаг по умолчанию =>
+	TRAP	100		; шаг - выражение
+	CALL	@ATCONV(R2)	; привести к типу переменной
+1$:	MOV	AFOR(R2),(R1)+	; опкод цикла: FORINT (целая) или FORDBL (двойная и одинарная)
+	MOV	#ASTAR+2,(R1)+	; заготовка адреса следующего оператора (ASTAR+2; назначение не выяснено до конца)
+	MOV	(SP)+,(R1)+	; адрес переменной цикла
+	TSTB	LYGIS		; идёт компиляция программы?
 	BEQ	CEND
-	MOV	R1,-4(R1)
+	MOV	R1,-4(R1)	; да - записать адрес конца в заготовку
 	BR	CEND
-2$:	TST	R2
+2$:	TST	R2		; целая переменная?
 	BEQ	3$
-	MOV	#DCONST,(R1)+
+	MOV	#DCONST,(R1)+	; нет - константа 1.0 двойной точности (4 слова)
 	CLR	(R1)+
 	CLR	(R1)+
 	CLR	(R1)+
 	MOV	#40200,(R1)+
 	BR	1$
-3$:	MOV	#ICONST,(R1)+
+3$:	MOV	#ICONST,(R1)+	; целая: константа 1
 	MOV	#1,(R1)+
 	BR	1$
 SYNERR:	TRAP	2
 ;
 AFOR:	.WORD	FORINT,FORDBL
 ;
-NEXT::	MOV	#NXSKIP,(R1)+
-	CLR	R4
-	MOV	#1,TYPE
-	CMPB	@R3,#12
-	BEQ	1$
-	TRAP	107
-	TRAP	13.
-	TSTB	R5
-	BMI	SYNERR
-1$:	MOV	R4,(R1)+
-	MOVB	TYPE,R2
-	INC	R2
+NEXT::	MOV	#NXSKIP,(R1)+	; опкод NXSKIP (пропустить чужие кадры стека до цикла)
+	CLR	R4		; R4 = 0 - переменная не указана
+	MOV	#1,TYPE		; TYPE = 1
+	CMPB	@R3,#12		; конец строки сразу после NEXT (без переменной)?
+	BEQ	1$		; да =>
+	TRAP	107		; разобрать имя переменной цикла
+	TRAP	13.		; строковая - ошибка 13
+	TSTB	R5		; элемент массива?
+	BMI	SYNERR		; да - ошибка синтаксиса
+1$:	MOV	R4,(R1)+	; адрес переменной цикла (0 - любая)
+	MOVB	TYPE,R2		; тип переменной,
+	INC	R2		; R2 = 2*(TYPE+1)
 	ASL	R2
-	MOV	ANXADD(R2),(R1)+
-	SUB	#2,R2
-	BLT	2$
-	MOV	#NEXCMP,(R1)+
+	MOV	ANXADD(R2),(R1)+	; опкод NEXINT/NEXDBL/NEXSNG по типу
+	SUB	#2,R2		; целая переменная?
+	BLT	2$		; да - больше ничего =>
+	MOV	#NEXCMP,(R1)+	; вещественный - доп. опкоды сравнения и перехода
 	MOV	#NEXJMP,(R1)+
-2$:	TRAP	112
-	CMPB	(R3)+,#',
-	BEQ	NEXT
+2$:	TRAP	112		; пропуск пробелов
+	CMPB	(R3)+,#',	; ',' ?
+	BEQ	NEXT		; ещё переменная => разобрать её как отдельный NEXT
 	DEC	R3
 	BR	CEND
 ;
 ANXADD:	.WORD	NEXINT,NEXDBL,NEXSNG
 ;
-STOP::	MOV	#HALT,(R1)+
-	BR	CEND
+; Оператор STOP
+STOP::	MOV	#HALT,(R1)+	; записать в код адрес обработчика HALT
+	BR	CEND		; => к общему эпилогу
 ;
-END::	MOV	#ENDPRG,(R1)+
-	BR	CEND
+; Оператор END
+END::	MOV	#ENDPRG,(R1)+	; записать адрес обработчика ENDPRG
+	BR	CEND		; => к общему эпилогу
 ;
 TRON::	НOV	#TRUN,(R1)+
-	BR	CEND
+	BR	CEND		; => к общему эпилогу
 ;
-TROFF::	MOV	#TREND,(R1)+
-CEND:	TRAP	106
+; Оператор TROFF
+TROFF::	MOV	#TREND,(R1)+	; записать адрес обработчика TREND (выключить трассировку)
+CEND:	TRAP	106		; проверить конец оператора/строки
+	RETURN			; вернуться в компилятор
+;
+; Оператор DATA
+DATA::	MOV	R0,@DATPTR	; вписать адрес этого DATA в конец цепочки (в предыдущее звено)
+	MOV	R0,DATPTR	; DATPTR теперь указывает на текущий DATA (новый конец цепочки)
 	RETURN
 ;
-DATA::	MOV	R0,@DATPTR
-	MOV	R0,DATPTR
-	RETURN
-;
+; Оператор RESTORE
 RESTOR::TSTB	LYGIS
-	BEQ	3$
-	MOV	AUTOON,(1)+
-	MOV	R1,AUTOON
-	TRAP 	110
-	BR	1$
-	TRAP	111
-	BR	2$
-	TRAP	8.
+	BEQ	3$		; не идёт компиляция программы (прямой режим) =>
+	MOV	AUTOON,(1)+	; вписать это RESTORE в цепочку AUTOON (форв.ссылка, как DATA/DATPTR)
+	MOV	R1,AUTOON	; AUTOON теперь указывает на текущее RESTORE
+	TRAP 	110		; необязательный номер строки (RESTORE <line>)
+	BR	1$		; номера нет => (восстановить к самому началу)
+	TRAP	111		; номер есть - искать строку в таблице строк программы
+	BR	2$		; строка найдена =>
+	TRAP	8.		; строка не найдена
 1$:	MOV	FCB,R4
 	TST	-(4)
 2$:	TST	-(4)
@@ -424,91 +456,94 @@ RESTOR::TSTB	LYGIS
 	BR	CEND
 3$:	TST	ERRS
 	BNE	5$
-	MOV	#RESTV,(R1)+
-	MOV	DATBEG,(R1)+
-	TRAP	110
-	BR	CEND
-	TRAP	111
-	BR	4$
-	TRAP	8.
-4$:	MOV	-4(R4),-2(R1)
+	MOV	#RESTV,(R1)+	; обработчик RESTV (восстановить указатель DATA)
+	MOV	DATBEG,(R1)+	; по умолчанию - начало цепочки DATA
+	TRAP	110		; необязательный номер строки (RESTORE <line>)
+	BR	CEND		; номера нет => конец оператора (восстановить в начало)
+	TRAP	111		; номер есть - искать строку в таблице строк программы
+	BR	4$		; строка найдена =>
+	TRAP	8.		; строка не найдена
+4$:	MOV	-4(R4),-2(R1)	; заменить аргумент RESTV на найденную строку
 	BR	CEND
 5$:	TRAP	4
 ;
 READ::	MOV	#$SQUEE,(R1)+
-	MOV	#READV,(1)+
+	MOV	#READV,(1)+	; опкод READV (взять очередное значение из DATA)
 	CLR	-(SP)
-	BR	INPENT
+	BR	INPENT		; => общий разбор списка переменных (см. INPUT)
 ;
 INPUT::	MOV	#$SQUEE,(R1)+
-	TRAP	120
-	BR	10$
-	MOV	#LIT,(R1)+
-	TRAP	112
+	TRAP	120		; есть ли строковый литерал-приглашение в кавычках?
+	BR	10$		; нет =>
+	MOV	#LIT,(R1)+	; есть - опкод LIT (вывести текст приглашения)
+	TRAP	112		; пропуск пробелов
 	CMPB	(R3)+,#';
 	BNE	SYNERR
-	TRAP	112
+	TRAP	112		; пропуск пробелов
 	MOV	#GETLIT,(R1)+
 	CLR	-(SP)
 	BR	INPENT
-10$:	JSR	R2,TSTFLN
-	MOV	#GET,(R1)+
+10$:	JSR	R2,TSTFLN	; нет приглашения - проверить номер файла (INPUT #n,...)
+	MOV	#GET,(R1)+	; обычный ввод со стандартным приглашением "? "
 INPENT:	MOV	R1,-(SP)
 	TST	(R1)+
+; Разбор списка переменных через запятую.
 1$:	CLR	R4
-	MOV	R1,-(SP)
+	MOV	R1,-(SP)	; место под ссылку на текущую переменную
 	TST	(R1)+
-	TRAP	107
+	TRAP	107		; разобрать имя переменной (одну)
 	NOP
 	TSTB	R5
-	BMI	2$
+	BMI	2$		; переменная с индексом (массив) =>
 	TST	R5
-	BEQ	4$
-	MOV	R4,@(SP)+
-3$:	TRAP	112
-	CMPB	(R3)+,#',
-	BEQ	1$
+	BEQ	4$		; имя не разобрано - ошибка
+	MOV	R4,@(SP)+	; обычная переменная - записать её адрес
+3$:	TRAP	112		; пропуск пробелов
+	CMPB	(R3)+,#',	; ',' ?
+	BEQ	1$		; ещё переменная => разобрать следующую
 	MOV	R1,@(SP)+
 	DEC	R3
 	JSR	R2,TSTFIL
 	BR	CEND
-2$:	MOV	#GETARR,(R1)+
+2$:	MOV	#GETARR,(R1)+	; элемент массива - опкод GETARR
 	MOV	R1,@(SP)+
 	BR	3$
 4$:	TRAP	2
 ;
-CLEAR::	CMPB	@R3,#12
+; Оператор CLEAR
+CLEAR::	CMPB	@R3,#12		; CLEAR без аргументов (конец строки)?
 	BEQ	1$
-	CMPB	@R3,#',
+	CMPB	@R3,#',		; CLEAR ,... (первый аргумент опущен)?
 	BNE	3$
-	MOV	#IVAR,(R1)+
+	MOV	#IVAR,(R1)+	; переменная STRSIZ как есть (без выражения)
 	MOV	#STRSIZ,(R1)+
 	BR	4$
-3$:	TRAP	125
-4$:	TRAP	116
+3$:	TRAP	125		; CLEAR <размер строк>[,...] - целое выражение
+4$:	TRAP	116		; есть ли ",<размер памяти>"?
 	BR	2$
 	CALL	CINT
-	MOV	#CLRMEM,(R1)+
+	MOV	#CLRMEM,(R1)+	; CLEAR со вторым аргументом - обработчик CLRMEM
 	BR	CEND
-2$:	MOV	#CLRSTR,(R1)+
+2$:	MOV	#CLRSTR,(R1)+	; CLEAR с одним аргументом - обработчик CLRSTR
 	BR	CEND
-1$:	MOV	#CLR,(R1)+
+1$:	MOV	#CLR,(R1)+	; CLEAR без аргументов - полный сброс (обработчик CLR)
 	BR	CEND
 ;
-DIM::	MOV	#10,R4
-	TRAP	107
+DIM::	MOV	#10,R4		; R4 <> 0 - ожидается массив (размерности разбирает TRAP 103)
+	TRAP	107		; разобрать имя массива и размерности
 	NOP
 1$:	TST	R5
-	BEQ	4$
-	TRAP	112
-	CMPB	(R3)+,#',
-	BNE	2$
+	BEQ	4$		; TRAP 107 не смог разобрать имя => ошибка
+	TRAP	112		; пропуск пробелов
+	CMPB	(R3)+,#',	; ',' ?
+	BNE	2$		; не запятая => один массив описан, конец
 	TSTB	LYGIS
-	BNE	DIM
-	TRAP	12.
+	BNE	DIM		; компиляция программы => разобрать следующий массив (снова DIM)
+	TRAP	12.		; прямой режим - несколько массивов через запятую недопустимы
 2$:	DEC	R3
 	BR	CEND2
 4$:	TRAP	2
+; Условие .IF EQ,1 ложно: оператор ERASE в эту сборку не входит.
     .IF EQ,1
 ;
 ERASE::	MOV	#$ERASE,(R1)+
@@ -538,32 +573,32 @@ ERASE::	MOV	#$ERASE,(R1)+
 	BR	CEND2
     .ENDC
 ;
-POKE::	TRAP	124
-	MOV	#POKJMP,(R1)+
+POKE::	TRAP	124		; два целых выражения: адрес, значение
+	MOV	#POKJMP,(R1)+	; опкод POKJMP
 CEND2:	TRAP	106
 	RETURN
 ;
-OUT::	TRAP	123
-	MOV	#OUTJMP,(R1)+
+OUT::	TRAP	123		; три целых выражения
+	MOV	#OUTJMP,(R1)+	; опкод OUTJMP
 	BR	CEND2
 ;
-COLOR::	CLR	R2
-	CMPB	#',,(R3)
-	BEQ	1$
-	INC	R2
-	TRAP	125
-1$:	TRAP	116
-	BR	2$
-	CALL	CINT
+COLOR::	CLR	R2		; R2 = 0 - первый параметр не задан
+	CMPB	#',,(R3)	; первый символ ',' - первый параметр опущен?
+	BEQ	1$		; да =>
+	INC	R2		; R2 = 1 - первый параметр задан
+	TRAP	125		; первый параметр - целое выражение
+1$:	TRAP	116		; есть второй параметр (,выражение)?
+	BR	2$		; нет =>
+	CALL	CINT		; привести к целому
 ;	MOV	#SPFORM,(R1)+
-	MOV	#COLF,(R1)+
-2$:	TST	R2
+	MOV	#COLF,(R1)+	; опкод COLF (второй параметр)
+2$:	TST	R2		; первый параметр задан?
 	BEQ	CEND2
 ;	MOV	#SPFORM,(R1)+
-	MOV	#COLR,(R1)+
+	MOV	#COLR,(R1)+	; опкод COLR (первый параметр)
 	BR	CEND2
 ;
-BEEP::;	CLR	R2
+BEEP::				;	CLR	R2
 ;	CMPB	@R3,#12
 ;	BEQ	1$
 ;	TST	(R2)+
@@ -572,42 +607,48 @@ BEEP::;	CLR	R2
 ;	TST	(R2)+
 ;	CALL	CINT
 1$:	MOV	#BEEP0,(R1)+	;	ABEEP(R2),(R1)+
-	BR	CEND2
+	BR	CEND2		; => к общему эпилогу
 ;
 ;ABEEP:	.WORD	BEEP0,	BEEP2,	BEEP1
 ;
-CLS::	MOV	#JCLS,(R1)+
-	BR	CEND2
+; Оператор CLS
+CLS::	MOV	#JCLS,(R1)+	; записать адрес обработчика JCLS (очистка экрана)
+	BR	CEND2		; => к общему эпилогу
 ;
-PSET::	CLR	R2
+; Оператор PSET
+; Оператор PSET(x,y)[,цвет]
+PSET::	CLR	R2		; R2 = смещение SET в таблице APOINT
 	BR	PNT
-PRESET::MOV	#2,R2
-PNT:	CALL	KOORD
-	TRAP	116
-	BR	6$
+; Оператор PRESET(x,y)[,цвет]
+PRESET::MOV	#2,R2		; R2 = смещение RESET в таблице APOINT
+PNT:	CALL	KOORD		; парсим координаты точки
+	TRAP	116		; есть ли ",цвет"?
+	BR	6$		; нет =>
 	CALL	CINT
 ;	MOV	#SPFORM,(R1)+
 	MOV	#COLR,(R1)+
 	MOV	#SET,(R1)+
 	MOV	#COLRET,(R1)+
 	BR	7$
-6$:	MOV	APOINT(R2),(R1)+
-7$:	TRAP	106
+6$:	MOV	APOINT(R2),(R1)+	; SET для PSET, RESET для PRESET
+7$:	TRAP	106		; конец оператора
 	RETURN
-APOINT:	.WORD	SET,RESET
+APOINT:	.WORD	SET,RESET	; обработчики: PSET=SET (зажечь точку), PRESET=RESET (погасить)
 ;
+; Оператор LINE
+; Оператор LINE [(x1,y1)]-(x2,y2)[,цвет][,B|BF]
 LINE::	CMPB	(R3),#'-
-	BEQ	1$
-	CALL	KOORD
+	BEQ	1$		; сразу '-' - первая точка не указана =>
+	CALL	KOORD		; парсим координаты точки
 	BR	2$
-1$:	MOV	#CURCOR,(R1)+
-2$:	CMPB	(R3)+,#'-
+1$:	MOV	#CURCOR,(R1)+	; первая точка не указана - опкод CURCOR (текущая позиция)
+2$:	CMPB	(R3)+,#'-	; Минус между парами координат ?
 	BNE	SYNER3
-	TRAP	112
-	CALL	KOORD
-	TST	R4
+	TRAP	112		; пропуск пробелов
+	CALL	KOORD		; парсим координаты точки
+	TST	R4		; вторая точка задана как STEP(...)?
 	BEQ	4$
-	MOV	#LSTP,-2(R1)
+	MOV	#LSTP,-2(R1)	; заменить опкод на LSTP (координаты относительные)
 4$:	CLR	R2
 	TRAP	116
 	BR	5$
@@ -626,57 +667,60 @@ LINE::	CMPB	(R3),#'-
 	TRAP	113
 	.WORD	RWLINE
 	.BYTE	2,2
-SYNER3:	TRAP	2
-	ADD	R5,PC
-	BR	L8
+SYNER3:	TRAP	2		; ни B, ни BF, ни просто конец - ошибка синтаксиса
+	ADD	R5,PC		; переход по индексу совпадения (R5 от TRAP 113)
+	BR	L8		; B (прямоугольник контуром) =>
 	MOV	#BOXSET,(R1)+
 	BR	L9
-L7:	MOV	#LSET,(R1)+
+L7:	MOV	#LSET,(R1)+	; ни B, ни BF - обычная линия, опкод LSET
 	BR	L9
 L8:	MOV	#RECSET,(R1)+
 L9:	TST	R2
 	BNE	10$
 	MOV	#COLRET,(R1)+
-10$:	TRAP	106
+10$:	TRAP	106		; конец оператора
 	RETURN
 ;
+; Парсинг координат точки (x,y) или STEP(x,y) - перед ними может быть '@'/STEP.
+; R4 на выходе ненулевой, если координаты относительные (был '@' или STEP).
 KOORD:	CLR	-(SP)
-	CMPB	(R3)+,#'@
+	CMPB	(R3)+,#'@	; символ '@' перед координатами?
 	BEQ	1$
 	DEC	R3
 	TRAP	113
 	.WORD	RWFOR+3
 	.BYTE	2,0
 	BR	3$
-1$:	INC	@SP
-3$:	TRAP	127
-	TRAP	124
-	TRAP	130
+1$:	INC	@SP		; запомнить признак "координаты относительные"
+3$:	TRAP	127		; (
+	TRAP	124		; два целых выражения через запятую: x,y
+	TRAP	130		; )
 	MOV	(SP)+,R4
 	BEQ	8$
 	MOV	#STP,(R1)+
 8$:	RETURN
 ;
+; Оператор DRAW "строка" (условие .IF EQ,0 истинно).
     .IF EQ,0
-DRAW::	TRAP	115
-	TRAP	5
-	TRAP	106
-	MOV	#$DRAW,(R1)+
+DRAW::	TRAP	115		; строковое выражение - команды рисования
+	TRAP	5		; ошибка 5 - не строка
+	TRAP	106		; конец оператора
+	MOV	#$DRAW,(R1)+	; опкод $DRAW
 	RETURN
     .ENDC
 ;
 PAINT::	CALL	KOORD
 	CLR	R2
-	CALL	SPL
-	CALL	SPL
+	CALL	SPL		; необязательный цвет заливки
+	CALL	SPL		; необязательный цвет границы
 	CMP	-(R1),#RSP
-	BNE	10$
-	MOV	#VIDSP,@R1
+	BNE	10$		; цвет границы указан явно =>
+	MOV	#VIDSP,@R1	; не указан - использовать цвет пера по умолчанию (VIDSP)
 10$:	TST	(R1)+
-	TRAP	106
-	TST	R2
+	TRAP	106		; конец оператора
+	TST	R2		; была запятая без значения после неё (см. SPL)?
 	BEQ	5$
-	TRAP	24.
+	TRAP	24.		; ошибка - параметр пропущен между запятыми
 5$:	MOV	#$PAINT,(R1)+
 	RETURN
 ;
@@ -686,29 +730,30 @@ SPL:	TRAP	116
 	MOV	#SPFORM,(R1)+
 	CLR	R2
 	BR	2$
-1$:	MOV	#RSP,(R1)+
+1$:	MOV	#RSP,(R1)+	; цвет не указан - опкод RSP (значение по умолчанию)
 	CMPB	@R3,#',
 	BNE	2$
-	INC	R3
+	INC	R3		; запятая есть, но значения после неё нет
 	INC	R2
 2$:	RETURN
 ;
-KEY::;	TRAP	113
+KEY::				;	TRAP	113
 ;	.WORD	RWKEY
 ;	.BYTE	2,4
 ;	BR	3$
 ;	MOV	KEYTAB(R5),(R1)+
 ;	BR	KEY4
-3$:	TRAP	125
-	CMPB	(R3)+,#',
+3$:	TRAP	125		; номер клавиши - целое выражение
+	CMPB	(R3)+,#',	; обязательная запятая
 	BNE	SYNER3
-	TRAP	115
+	TRAP	115		; текст надписи - строковое выражение
 KEY3:	TRAP	13.
-	MOV	#$KEY,(R1)+
-KEY4:	TRAP	106
+	MOV	#$KEY,(R1)+	; опкод $KEY
+KEY4:	TRAP	106		; конец оператора
 	RETURN
 ;KEYTAB::.WORD	KEYISV,KEYON,KEYOFF
 ;
+; Условие .IF EQ,1 ложно: оператор SWAP в эту сборку не входит.
     .IF EQ,1
 SWAP::	JSR	R2,SWARG
 	TRAP	126
@@ -759,168 +804,173 @@ SWADR:	.WORD	SWPI
 	.WORD	SWPR
     .ENDC
 ;
-CIRCLE::CALL	KOORD
-	TRAP	116
-	TRAP	2
+CIRCLE::CALL	KOORD		; парсим координаты точки
+	TRAP	116		; обязательная ",радиус" (иначе ошибка ниже)
+	TRAP	2		; запятая/радиус отсутствуют - ошибка синтаксиса
 	CALL	CINT
 	CLR	R2
-	CALL	SPL
-	TRAP	116
-	BR	1$
+	CALL	SPL		; необязательный цвет
+	TRAP	116		; есть ли ",начальный_угол"?
+	BR	1$		; нет =>
 	CALL	CDBL
-	MOV	#ANG1,(R1)+
+	MOV	#ANG1,(R1)+	; опкод ANG1 (начальный угол задан)
 	CLR	R2
 	BR	2$
-1$:	MOV	#ANG01,(R1)+
+1$:	MOV	#ANG01,(R1)+	; опкод ANG01 (начальный угол по умолчанию)
 	CMPB	@R3,#',
 	BNE	2$
-	INC	R3
+	INC	R3		; запятая есть, но угла после неё нет
 	INC	R2
 2$:	TRAP	116
 	BR	3$
 	CALL	CDBL
-	MOV	#ANG2,(R1)+
+	MOV	#ANG2,(R1)+	; опкод ANG2 (конечный угол задан)
 	CLR	R2
 	BR	4$
-3$:	MOV	#ANG02,(R1)+
+3$:	MOV	#ANG02,(R1)+	; опкод ANG02 (конечный угол по умолчанию)
 	CMPB	@R3,#',
 	BNE	4$
-	INC	R3
+	INC	R3		; запятая есть, но угла после неё нет
 	INC	R2
 4$:	TRAP	116
 	BR	10$
 	MOVB	TYPE,R4
 	INC	R4
 	ASL	R4
-	MOV	7$(R4),(R1)+
+	MOV	7$(R4),(R1)+	; опкод ASPSNG/ASPINT по типу выражения
 	CLR	R2
 	BR	6$
-10$:	MOV	#ASP0,(R1)+
+10$:	MOV	#ASP0,(R1)+	; соотношение сторон по умолчанию - опкод ASP0
 	CMPB	@R3,#',
 	BNE	6$
-	INC	R3
+	INC	R3		; запятая есть, но значения после неё нет
 	INC	R2
-6$:	TRAP	106
-	TST	R2
+6$:	TRAP	106		; конец оператора
+	TST	R2		; была ли где-то запятая без значения после неё?
 	BEQ	8$
-	TRAP	24.
+	TRAP	24.		; ошибка - параметр пропущен между запятыми
 8$:	MOV	#$ARC,(R1)+
 	RETURN
 7$:	.WORD	ASPINT,ASPDBL,ASPSNG
 ;
 DEF::	TRAP	113
 	.WORD	RWDEF
-	.BYTE	3,2	;12 SU DEFTYP
-DEFERR:	TRAP	2
-DEFUSR:	TRAP	112
-	TRAP	102
-	BR	1$
-	BR	DEFFN
-	MOVB	(R3)+,R2
+	.BYTE	3,2		;12 SU DEFTYP
+DEFERR:	TRAP	2		; ошибка синтаксиса
+DEFUSR:	TRAP	112		; пропуск пробелов
+	TRAP	102		; классифицировать след. символ: буква/цифра/иначе
+	BR	1$		; не буква и не цифра (просто USR=...) =>
+	BR	DEFFN		; буква (это на самом деле DEF FN) =>
+	MOVB	(R3)+,R2	; цифра - номер USR-подпроцесса (0-9)
 	SUB	#'0,R2
 	ASL	R2
 2$:	TST	R5
 	BNE	DEFERR
-	ADD	#USRTAB,R2
-	TRAP	112
-	CMPB	(R3)+,#'=
+	ADD	#USRTAB,R2	; R2 = адрес нужной ячейки в таблице USRTAB
+	TRAP	112		; пропуск пробелов
+	CMPB	(R3)+,#'=	; '=' ?
 	BNE	DEFERR
-	TRAP	125
+	TRAP	125		; адрес подпроцесса - целое выражение
 	TRAP	106
 	MOV	#$DEFUS,(R1)+
 	MOV	R2,(R1)+
 	RETURN
-1$:	CLR	R2
+1$:	CLR	R2		; номер по умолчанию - USR0
 	BR	2$
 ;
+; DEF FN имя[(парам,...)]=выражение.
 DEFFN:	TST	R5		;SUB #2 SU DEFTYP
 	BEQ	DEFERR		;BMI	SU DEFTYP
 ;	BGT	DEFTYP		;	SU DEFTYP
 	TSTB	LYGIS
-	BNE	11$
-	TRAP	12.
-11$:	MOV	#DFN,(R1)+
+	BNE	11$		; идёт компиляция программы =>
+	TRAP	12.		; DEF FN допустим только в тексте программы
+11$:	MOV	#DFN,(R1)+	; опкод DFN (точка входа функции при вызове)
 	MOV	R0,-(SP)
 	MOV	R1,-(SP)
 	TST	(R1)+
-	TRAP	105
+	TRAP	105		; разобрать имя функции (с типом $/%/!)
 	TRAP	2
 	TRAP	2
 	NOP
-	BIS	#100100,R5
-	MOV	TYPE,R0
-	MOV	#-1,TYPE
-	TRAP	104
+	BIS	#100100,R5	; пометить имя как функцию (смысл битов не выяснен до конца)
+	MOV	TYPE,R0		; R0 = тип функции
+	MOV	#-1,TYPE	; на время поиска TYPE = -1
+	TRAP	104		; завести имя функции в таблицу переменных
 	MOV	R4,(R1)+
 	TST	(R4)+
 	MOV	R4,-(SP)
-	CLR	R2
+	CLR	R2		; R2 = счётчик параметров
 	CLR	-(SP)
-	CMPB	@R3,#'(
+	CMPB	@R3,#'(		; есть ли список параметров в скобках?
 	BNE	6$
+; Разбор списка формальных параметров через запятую.
 1$:	INC	R3
 	TRAP	102
 	TRAP	2
 	BR	3$
 2$:	TRAP	2
-3$:	TRAP	105
+3$:	TRAP	105		; разобрать имя параметра (с типом)
 	TRAP	2
 	TRAP	2
 	NOP
-	MOV	@SP,R4
+	MOV	@SP,R4		; R4 = текущий конец записи функции (место под параметры)
 	MOV	R5,-(SP)
-	BMI	4$
+	BMI	4$		; строка (бит 15) - 2 слова =>
+	ROL	R5		; бит 14 - целая?
+	BMI	5$		; да - 1 слово =>
 	ROL	R5
-	BMI	5$
-	ROL	R5
-	BMI	4$
-	CMP	(R4)+,(R4)+
+	BMI	4$		; бит 13 - одинарная: 2 слова =>
+	CMP	(R4)+,(R4)+	; иначе двойная: 4 слова (2 здесь и 2 ниже)
 4$:	TST	(R4)+
 5$:	TST	(R4)+
-	MOV	TYPE,-(SP)
-	MOV	R4,-(SP)
-	INC	R2
-	TRAP	112
-	CMPB	@R3,#',
-	BEQ	1$
-	TRAP	130
-6$:	MOV	R2,(R1)+
+	MOV	TYPE,-(SP)	; тип параметра
+	MOV	R4,-(SP)	; и его место в записи
+	INC	R2		; ещё один параметр
+	TRAP	112		; пропуск пробелов
+	CMPB	@R3,#',		; ',' ?
+	BEQ	1$		; ещё параметр => разобрать следующий
+	TRAP	130		; )
+6$:	MOV	R2,(R1)+	; число параметров
 	CMPB	(R3)+,#'=
-	BNE	2$
+	BNE	2$		; нет '=' - ошибка синтаксиса
 	MOV	SP,PFACT
 	MOV	R1,-(SP)
 	ASL	R2
-	ADD	R2,R1
+	ADD	R2,R1		; зарезервировать место в коде под аргументы
 	INC	TMP
 	TST	R0
-	BPL	7$
-	TRAP	115
+	BPL	7$		; тип функции числовой =>
+	TRAP	115		; строковый тип - тело функции: строковое выражение
 	TRAP	13.
 	MOV	#4,R0
 	TST	R4
 	BNE	8$
-	MOV	#NEWSTR,(1)+
+	MOV	#NEWSTR,(1)+	; результату нужна новая память под строку
 	BR	8$
-7$:	TRAP	100
+7$:	TRAP	100		; тело функции - числовое выражение
 	MOVB	R0,R0
 	INC	R0
 	ASL	R0
 	CALL	@ATCONV(R0)
 8$:	CLR	PFACT
 	MOV	(SP)+,R4
+; Скопировать сохранённые (тип,адрес) каждого параметра в зарезервированное
+; в коде место (см. ASL R2/ADD R2,R1 выше).
 9$:	TST	(SP)+
 	BEQ	10$
 	MOV	(SP)+,(R4)+
 	TST	(SP)+
 	BR	9$
-10$:	MOV	ARET(R0),(R1)+
+10$:	MOV	ARET(R0),(R1)+	; опкод возврата из функции: IFNRET (целая), DFNRET (двойная), SFNRET (одинарная или строка - обе по 2 слова)
 	MOV	(SP)+,(R1)+
 	MOV	R1,@(SP)+
 	MOV	(SP)+,R0
-	TRAP	106
+	TRAP	106		; конец оператора
 	RETURN
 ARET:	.WORD	IFNRET,DFNRET,SFNRET
 ;
+; Условие .IF EQ,1 ложно: DEFTYP (DEFINT/DEFDBL и т.п.) в эту сборку не входит.
     .IF EQ,1
 DEFTYP:	TST	-(R5)
 10$:	TRAP	102
@@ -953,6 +1003,7 @@ DEFTYP:	TST	-(R5)
 ;
     .ENDC
 ;
+; Контрольное слово ПЗУ (балансирует контрольную сумму блока, проверяется при старте).
 SUM2::	.WORD	0
 ;
 ON::	TRAP	100
@@ -960,38 +1011,40 @@ ON::	TRAP	100
 	TRAP	113
 	.WORD	RWON
 	.BYTE	3,2
-	TRAP	2
-	MOV	ADRON(R5),(R1)+
+	TRAP	2		; ни GOTO, ни GOSUB - ошибка синтаксиса
+	MOV	ADRON(R5),(R1)+	; опкод ONJMP или ONJSR (по GOTO/GOSUB)
 	MOV	R0,-(SP)
 	CLR	R0
-	CLR	R2
+	CLR	R2		; R2 = счётчик перечисленных строк
 	MOV	R1,-(SP)
-	TST	(R1)+
-1$:	CALL	TO
+	TST	(R1)+		; зарезервировать слово под счётчик строк
+1$:	CALL	TO		; разобрать и разрешить очередной номер строки (как GOTO)
 	INC	R2
-	TRAP	112
-	CMPB	(R3)+,#',
-	BEQ	1$
+	TRAP	112		; пропуск пробелов
+	CMPB	(R3)+,#',	; ',' ?
+	BEQ	1$		; ещё строка => разобрать следующую
 	DEC	R3
-	MOV	R2,@(SP)+
+	MOV	R2,@(SP)+	; записать итоговое число строк
 	MOV	(SP)+,R0
-	TRAP	106
+	TRAP	106		; конец оператора
 	RETURN
 ;
-ADRON:	.WORD	ONJSR,ONJMP
+ADRON:	.WORD	ONJSR,ONJMP	; опкоды: ON...GOSUB / ON...GOTO
 ;
-OPEN::	TRAP	115
-	TRAP	56.
-	CLR	R2
+; Оператор OPEN
+; Оператор OPEN "файл" [FOR OUTPUT|INPUT] [AS #n - не реализовано]
+OPEN::	TRAP	115		; разобрать имя файла
+	TRAP	56.		; ошибка при разборе имени
+	CLR	R2		; по умолчанию - OUTPUT
 	TRAP	113
 	.WORD	OPFOR
 	.BYTE	3,0
-	BR	1$
+	BR	1$		; FOR нет - используем режим по умолчанию =>
 	TRAP	113
 	.WORD	RWOPEN
 	.BYTE	6,2
-	TRAP	2
-	MOV	R5,R2
+	TRAP	2		; ни OUTPUT, ни INPUT - ошибка синтаксиса
+	MOV	R5,R2		; R2 - выбранный режим (индекс в таблице OP)
 1$:
 ;	TRAP	113
 ;	.WORD	RWOPEN+13.
@@ -1002,11 +1055,11 @@ OPEN::	TRAP	115
 ;2$:	MOV	#ICONST,(R1)+
 ;	MOV	#1,(R1)+
 ;
-3$:	TRAP	106
-	MOV	OP(R2),(R1)+
+3$:	TRAP	106		; конец оператора
+	MOV	OP(R2),(R1)+	; опкод OPOUT или OPINP
 	RETURN
 ;
-OP:	.WORD	OPOUT,OPINP
+OP:	.WORD	OPOUT,OPINP	; обработчики: открыть на запись / на чтение
 ;
 CLOSE::
 ;	CLR	R2
@@ -1018,8 +1071,8 @@ CLOSE::
 ;	BEQ	1$
 ;	DEC	R3
 ;
-2$:	TRAP	106
-	MOV	#CLOFIL,(R1)+
+2$:	TRAP	106		; конец оператора
+	MOV	#CLOFIL,(R1)+	; записать адрес обработчика CLOFIL (закрыть файл)
 ;	MOV	R2,(R1)+
 	RETURN
 ;
@@ -1032,26 +1085,33 @@ CLOSE::
 ;	CALL	CINT
 ;	RETURN
 ;
+; Вызывается как JSR R2,TSTFLN (адрес возврата в R2). Проверяет необязательный
+; "#файл," перед списком PRINT/INPUT. Флаг на стеке: 0 - файла нет,
+; ненулевой - файл указан (используется затем в TSTFIL).
 TSTFLN:	CLR	@SP
-	CMPB	@R3,#'#
-	BNE	1$
-	DEC	@SP
-	INC	R3
+	CMPB	@R3,#'#		; символ '#' - есть номер файла?
+	BNE	1$		; нет =>
+	DEC	@SP		; есть - отметить флаг
+	INC	R3		; пропустить '#'
 ;	CALL	FILNUM
 ;	TRAP	126
-	MOV	#DEVICE,(R1)+
-1$:	MOV	R2,PC
+	MOV	#DEVICE,(R1)+	; опкод DEVICE (выбрать устройство по номеру файла)
+1$:	MOV	R2,PC		; вернуться (JSR R2 - адрес возврата в R2)
 ;1$:	MOV	#INIPRP,(1)+	;PRINT SKAITIKLIS...
 ;	MOV	R2,PC
 ;
-TSTFIL:	TST	(SP)+
-	TST	@SP
-	BEQ	1$
-	MOV	#CLRDEV,(R1)+
-1$:	RTS	R2
+; Парная к TSTFLN, вызывается после разбора списка PRINT/INPUT (тоже JSR R2).
+; Если был указан файл (см. флаг TSTFLN) - вернуть устройство к обычному.
+TSTFIL:	TST	(SP)+		; снять флаг, оставленный PRI/INPENT
+	TST	@SP		; флаг файла от TSTFLN
+	BEQ	1$		; файла не было =>
+	MOV	#CLRDEV,(R1)+	; файл был - опкод CLRDEV (сброс устройства)
+1$:	RTS	R2		; вернуться (JSR R2)
 ;
+; Оператор CALL: в код записывается опкод USEROM и адрес текста оператора в
+; исходной строке; разбор и вызов - при выполнении (подключаемое ПЗУ, см. USEROM).
 CALL::	MOV	#USEROM,(1)+
-	MOV	R3,(1)+
+	MOV	R3,(1)+		; адрес текста после CALL в исходной строке
 	RETURN
 ;
 	.END

@@ -16,7 +16,7 @@ BASVU:	.BYTE	14,40,342,345,352,363,351,353,40,40,40,40,40
 ;
 OK:	.BYTE	117,153,12	;OK
 ;
-OPRNAM::.ASCII	/  /	;ТАБЛИЦА ИМЕН ОПЕРАТОРОВ
+OPRNAM::.ASCII	/  /		;ТАБЛИЦА ИМЕН ОПЕРАТОРОВ
 	.ASCII	/' /
 	.ASCII	/DIM /
 	.ASCII	/LINE /
@@ -83,20 +83,20 @@ OPFOR::	.ASCII	/FOR /
 ;
 ;	ТАБЛИЦА АДРЕСОВ ИМЕН ОПЕРАТОРОВ
 ;
-AOPNAM::.WORD	OPRNAM,OPRNAM+2,OPRNAM+4,OPRNAM+10,OPRNAM+15		;-CIRCLE
+AOPNAM::.WORD	OPRNAM,OPRNAM+2,OPRNAM+4,OPRNAM+10,OPRNAM+15	;-CIRCLE
 	.WORD	OPRNAM+24,OPRNAM+30,OPRNAM+36,OPRNAM+42,OPRNAM+50	;-GOTO
-	.WORD	OPRNAM+55,OPRNAM+60,OPRNAM+66,OPRNAM+72			;-OPEN
-	.WORD	OPRNAM+77,OPRNAM+101,OPRNAM+107,OPRNAM+114		;-PAINT
+	.WORD	OPRNAM+55,OPRNAM+60,OPRNAM+66,OPRNAM+72	;-OPEN
+	.WORD	OPRNAM+77,OPRNAM+101,OPRNAM+107,OPRNAM+114	;-PAINT
 	.WORD	OPRNAM+122,OPRNAM+130,OPRNAM+135,OPRNAM+141,OPRNAM+150	;-_
 	.WORD	OPRNAM+152,OPRNAM+157,OPRNAM+164,OPRNAM+171,OPRNAM+175	;-STOP
-	.WORD	OPRNAM+202,OPRNAM+211					;-ON
-	.WORD	OPRNAM+214,OPRNAM+224,OPRNAM+230			;-DATA
-	.WORD	OPRNAM+235,OPRNAM+244,OPRNAM+252,OPRNAM+257		;-KEY
-	.WORD	OPRNAM+263,OPRNAM+270,OPRNAM+274			;-COLOR
-	.WORD	OPRNAM+302,OPRNAM+307,OPRNAM+316,OPRNAM+324		;-BLOAD
+	.WORD	OPRNAM+202,OPRNAM+211	;-ON
+	.WORD	OPRNAM+214,OPRNAM+224,OPRNAM+230	;-DATA
+	.WORD	OPRNAM+235,OPRNAM+244,OPRNAM+252,OPRNAM+257	;-KEY
+	.WORD	OPRNAM+263,OPRNAM+270,OPRNAM+274	;-COLOR
+	.WORD	OPRNAM+302,OPRNAM+307,OPRNAM+316,OPRNAM+324	;-BLOAD
 	.WORD	OPRNAM+332,OPRNAM+337,OPRNAM+345,OPRNAM+353,OPRNAM+360	;-SAVE
 	.WORD	OPRNAM+365,OPRNAM+371,OPRNAM+376,OPRNAM+403,OPRNAM+411	;-LLIST
-	.WORD	OPRNAM+417,OPRNAM+425,OPRNAM+434,OPRNAM+441		;-RUN
+	.WORD	OPRNAM+417,OPRNAM+425,OPRNAM+434,OPRNAM+441	;-RUN
 ;	.WORD	OPRNAM+445,OPRNAM+453,OPRNAM+461,OPRNAM+467,OPRNAM+474
 ;
 ;	ТАБЛИЦА АДРЕСОВ ПРОГРАММ КОМПИЛЯЦИИ
@@ -106,8 +106,8 @@ AOPNAM::.WORD	OPRNAM,OPRNAM+2,OPRNAM+4,OPRNAM+10,OPRNAM+15		;-CIRCLE
 	.GLOBL	IODEV,STRREG,STRSIZ,FREBEG,FRELEN,KEY,CIRCLE
 	.GLOBL	LOCATE,CLEAR,HIMEM,BEEP,CLS,COLOR,RWREN,PSET,PRESET,DEF
 	.GLOBL	LOAD,SAVE,CLOAD,CSAVE,BLOAD,BSAVE,FIND
-	.GLOBL	DATA,READ,RESTOR,DATBEG,DATPTR,ON,OPEN,CLOSE,REM     ;MOTOR
-	.GLOBL	LPRINT,CALL,MSTART,MAG,HALT			;ERASE,SWAP
+	.GLOBL	DATA,READ,RESTOR,DATBEG,DATPTR,ON,OPEN,CLOSE,REM	;MOTOR
+	.GLOBL	LPRINT,CALL,MSTART,MAG,HALT	;ERASE,SWAP
 AOPSUB::.WORD	LET,REM,DIM,LINE,CIRCLE,DEF,TROFF,FOR,GOSUB
 	.WORD	GO,IF,INPUT,LET,OPEN,PRINT,CLOSE
 	.WORD	NEXT,PAINT,PRINT,DRAW
@@ -144,11 +144,11 @@ STAR::
 AUTOCL:	CLR	AUTOON
 	CLR	LYGIS		;ПРИЗНАК РАБОТЫ МОНИТОРА
 	MOV	#OK,R1		;ВЫВОД OK
-	MOV	#3,R2
-	CALL	ISVEIL
-	CALL	CURON
+	MOV	#3,R2		; длина текста "Ok"
+	CALL	ISVEIL		; вывести
+	CALL	CURON		; включить курсор
 PRGLIN:	TST	AUTOON
-	BNE	AUNEXT
+	BNE	AUNEXT		; AUTO включён => сразу вывести номер следующей строки =>
 	CALL	IVEIL		;ВВОД СТРОКИ
 ;
 ; --------------------------
@@ -156,100 +156,114 @@ PRGLIN:	TST	AUTOON
 ; --------------------------
 ;
 ANALIZ::MOV	#BUF,R3
-	CMPB	@R3,#'.
+	CMPB	@R3,#'.		; первая позиция '.'?
 	BNE	1$
-	INC	R3
-	JMP	EDIT
-1$:	JSR	R1,ASCCOD
-	BR	COMAND
-	BR	PRGLIN
+	INC	R3		; съесть '.'
+	JMP	EDIT		; '.' - редактировать текущую строку
+1$:	JSR	R1,ASCCOD	; классифицировать строку (номер программы / команда)
+	BR	COMAND		; директива монитора (возврат без пропуска) =>
+	BR	PRGLIN		; строка программы сохранена (пропуск) - снова ввод
 ;
+; AUNEXT - AUTO-режим: вычислить номер следующей строки (CURLIN+AUINC).
+; При переполнении (BCS) - выключить AUTO; иначе перейти к её вводу (EDAUIN).
 AUNEXT:	MOV	CURLIN,R5
 	ADD	AUINC,R5
-	BCS	AUTOCL
+	BCS	AUTOCL		; переполнение номера строки => выключить AUTO =>
 	JMP	EDAUIN
 ;
+; COMAND - выполнить директиву монитора. R5 - номер директивы (от ASCCOD).
+; Если он в диапазоне таблицы AOPMON (командные глаголы монитора: NEW, LIST,
+; RUN и т.п.) - перейти по AOPSUB(R5) (общая с компилятором таблица адресов
+; обработчиков операторов/команд); иначе (R5 вне диапазона AOPMON, т.е. это
+; обычный оператор языка) - передать на выполнение как прямой оператор (STATM).
 COMAND: CALL	CUROFF
 	CMP	R5,#AOPMON-AOPSUB
-	BLT	1$
+	BLT	1$		; команда монитора => обработчик из AOPSUB/AOPMON =>
 	JMP	@AOPSUB(R5)
-1$:	JMP	STATM
+1$:	JMP	STATM		; обычный оператор => выполнить как прямой оператор =>
 ;
 ASCCOD::MOV	#BUF,R3
-	TRAP	110
+	TRAP	110		; разобрать ведущий номер строки (если есть) -> R5
 	BR	10$		;БЕЗ НОМЕРА
 	MOV	@PC,ERRS
 	CLR	STRREG
-	MOV	R5,CURLIN
-	TRAP	111
-	BR	5$
-	CMPB	@R3,#12
-	BEQ	7$
+	MOV	R5,CURLIN	; запомнить номер редактируемой строки
+	TRAP	111		; найти строку с номером R5 в таблице TABTOP
+	BR	5$		; найдена => R4 -> существующая запись =>
+	CMPB	@R3,#12		; не найдена: тело строки пустое (только LF)?
+	BEQ	7$		; да - нечего сохранять/удалять => выйти =>
 	MOV	TABTOP,R0
 	MOV	R0,R2
-	SUB	#6,R2
+	SUB	#6,R2		; освободить место под новую 3-словную запись
 	CMP	R2,TXEND
-	BLOS	MEMFUL
-	MOV	R2,TABTOP
+	BLOS	MEMFUL		; таблица упёрлась в текст программы => ошибка памяти
+	MOV	R2,TABTOP	; сдвинуть верх таблицы строк
 	MOV	R2,LENT
 	MOV	R2,LIMIT
 	MOV	R2,CIKL
-17$:	MOV	(R0)+,(R2)+
+17$:	MOV	(R0)+,(R2)+	; сдвинуть существующие записи на освободившееся место
 	CMP	R0,R4
-	BLOS	17$
-	MOV	R5,@R4
-5$:	MOV	R4,R5
-10$:	TRAP	112
+	BLOS	17$		; пока не дошли до места вставки (R4 от TRAP111) =>
+	MOV	R5,@R4		; записать номер новой строки в новую запись
+5$:	MOV	R4,R5		; R5 = адрес записи строки (новой или существующей)
+10$:	TRAP	112		; пропустить пробелы перед телом строки
 ; ОПОЗНАНИЕ ОПЕРАТОРА
-	CMPB	@R3,#12
-	BNE	16$
-	TST	R5
-	BEQ	7$
-	CALL	DEL
+	CMPB	@R3,#12		; тело строки (после номера) пустое?
+	BNE	16$		; нет, есть текст => разобрать как оператор =>
+	TST	R5		; да, пусто: номер строки был указан?
+	BEQ	7$		; не было (прямой режим, пустой ввод) => ничего не делать =>
+	CALL	DEL		; был - строка существовала => удалить её из таблицы
 	BR	7$
 16$:	MOV	R5,R2
-	TRAP	113
+	TRAP	113		; ключевое слово - директива монитора (таблица OPRNAM)?
 	.WORD	OPRNAM
 	.BYTE	2
 	.BYTE	MONIT-AOPSUB-2
 	CLR	R5
-25$:	TST	R2
-	BEQ	8$
-    	MOV	TXEND,R0
+25$:	TST	R2		; директива монитора опознана?
+	BEQ	8$		; да => выйти с 0-пропуском (это COMAND) =>
+    	MOV	TXEND,R0	; нет - это строка программы: R0 -> конец области текста
 	SUB	R3,@SP
 	ADD	R0,@SP
 	CMP	@SP,TABTOP
-	BHIS	1$
-	MOV	R0,-(R2)
-	MOVB	R5,(R0)+
-2$:	MOVB	(R3)+,(R0)
+	BHIS	1$		; область текста наехала бы на таблицу строк => ошибка =>
+	MOV	R0,-(R2)	; сохранить адрес текста строки в записи таблицы
+	MOVB	R5,(R0)+	; ? (служебный байт перед текстом строки)
+2$:	MOVB	(R3)+,(R0)	; скопировать текст строки посимвольно
 	CMPB	(R0)+,#12	;BUTINA PAGAL 12 DEL LOAD
 	BNE	2$
-	MOV	R0,TXEND
+	MOV	R0,TXEND	; новый конец области текста
 	INC	R0
-	BIC	#1,R0
+	BIC	#1,R0		; выровнять по слову
 	MOV	R0,ENDCOD
-7$:	TST	(R1)+
+7$:	TST	(R1)+		; 1-пропуск: строка программы сохранена, вернуться за следующей
 8$:	RTS	R1
 ;
 1$:	MOV	R2,R4
 	CALL	DEL
 MEMFUL:	TRAP	7
 ;
+; DEL - удалить из таблицы строк (TABTOP) 3-словную запись R4, сдвинув
+; более ранние записи на 6 байт вверх по памяти (таблица растёт вниз).
 DEL:	MOV	R4,R0
-DELINT:	TST	(R4)+
-	CMP	-(R0),-(R0)
+DELINT:	TST	(R4)+		; сдвинуть R4 на слово вперёд (к следующей записи)
+	CMP	-(R0),-(R0)	; сдвинуть R0 на 2 слова назад
 20$:	CMP	R0,TABTOP
-	BLOS	21$
-	MOV	-(R0),-(R4)
+	BLOS	21$		; дошли до начала таблицы => готово =>
+	MOV	-(R0),-(R4)	; сдвинуть очередное слово более ранней записи вверх
 	BR	20$
-21$:	MOV	R4,TABTOP
+21$:	MOV	R4,TABTOP	; новая (уменьшенная) вершина таблицы строк
 	RETURN
 ;
+; CLRBUF - отвести под HIMEM системные буферы: сначала буфер файла (422 окт.
+; байт, его первое слово обнуляется), затем ещё 400 окт. байт (блок обмена
+; с магнитофоном, см. LOAD/SAVE); FCB - получившаяся верхняя граница области
+; программы. Закомментированные MAXFIL/SOB - неиспользуемая поддержка
+; нескольких буферов.
 CLRBUF::MOV	HIMEM,FCB
 ;	MOV	MAXFIL,R1
 ;	BEQ	2$
-1$:	SUB	#422,FCB
+1$:	SUB	#422,FCB	; отвести системный буфер (FCB) под HIMEM
 	CLR	@FCB
 ;	SOB	R1,1$
 2$:	SUB	#400,FCB
@@ -257,68 +271,80 @@ CLRBUF::MOV	HIMEM,FCB
 ;
 CLRTXT::CALL	CLRBUF
 	MOV	FCB,TABTOP	;
-	MOV	#TEXT,TXEND
+	MOV	#TEXT,TXEND	; опустошить область текста программы
 	CLR	PFACT
 	MOV	#BASVU,R1	;wywod na~alxnogo soob}eniq
-	MOV	#42,R2
-	CALL	ISVEIL
+	MOV	#42,R2		; длина сообщения, 42 окт. байт
+	CALL	ISVEIL		; вывести
 ;
+;	CLR	ONERFL
 CLRCOD::MOV	TABTOP,LENT
 	MOV	TABTOP,LIMIT
 	MOV	TABTOP,CIKL
 	MOV	TXEND,ENDCOD
 	INC	ENDCOD
-	BIC	#1,ENDCOD
+	BIC	#1,ENDCOD	; выровнять ENDCOD по слову
 	MOV	@PC,ERRS	;ЗАПРЕТИТЬ ВЫПОЛНЕНИЕ РАБОЧЕЙ ПРОГРАММ
 	CLR	STRREG
 	RETURN
 ;
+; STRMEM - отвести область строк (FREBEG..FREBEG+STRSIZ) сразу за кодом
+; (ENDCOD), требуемого размера STRSIZ; не помещается перед стеком кадров
+; (LENT) - ошибка памяти (MEMFUL). ENDCOD и STRREG сдвигаются за неё.
 STRMEM:	MOV	ENDCOD,R1
-	MOV	R1,FREBEG
+	MOV	R1,FREBEG	; начало области строк - сразу за кодом
 	ADD	STRSIZ,R1
-	MOV	STRSIZ,FRELEN
+	MOV	STRSIZ,FRELEN	; размер свободной области строк
 	CMP	R1,LENT
-	BHI	MEMFUL
-	MOV	R1,ENDCOD
+	BHI	MEMFUL		; наехала на стек кадров => ошибка памяти =>
+	MOV	R1,ENDCOD	; код теперь включает область строк
 	MOV	FREBEG,STRREG
 	RETURN
 ;
 NEW:	TRAP	106
 	MOV	#STACK,SP
 	CALL	CLOALL
-	CALL	CLRTXT
-	CALL	ISVSS
+	CALL	CLRTXT		; очистить программу и таблицу строк
+	CALL	ISVSS		; перерисовать строку функциональных клавиш (BK.MAC)
 	JMP	MONIT
 ;
-LLIST:	MOV	#-1,IODEV
+; LLIST/LIST - вывод текста программы (LLIST - на печать, IODEV=-1). LARG
+; разбирает необязательный диапазон номеров строк (R4=начало, R0=конец в
+; таблице строк; литовский коммент "PIRMAS ARGUMENTAS - R4, ANTRAS - R0" =
+; "первый аргумент - R4, второй - R0"). Цикл LS3..8$ собирает и
+; печатает каждую строку (EILUTE - как в SAVE), пока R4 не выйдет
+; за границу диапазона (@SP). Закомментированный код (LS7/LS8/LS9, литовское
+; "PUSLAPIAVIMAS" = "постраничный вывод") - неиспользуемая в этой сборке
+; постраничная разбивка листинга (пауза с ожиданием клавиши между страницами).
+LLIST:	MOV	#-1,IODEV	; вывод на печать
 ;
 LIST::	MOV	R5,-(SP)
 	CALL	LARG		; PIRMAS ARGUMENTAS - R4, ANTRAS - R0
 ;	CLR	-(SP)
-	INC	LYGIS
+	INC	LYGIS		; занять LYGIS на время листинга
 	CMP	R4,R0
-	BLO	LS66	;PRIE PUSLAPIAVIMO LS6
-LS1:	MOV	R4,-(SP)
-LS2:	MOV	R0,-(SP)
+	BLO	LS66		;PRIE PUSLAPIAVIMO LS6
+LS1:	MOV	R4,-(SP)	; сохранить начало диапазона
+LS2:	MOV	R0,-(SP)	; сохранить конец диапазона
    	CALL	CUROFF
 ;	CLR	-(SP)
-LS3:	CALL	EILUTE
+LS3:	CALL	EILUTE		; собрать и напечатать текущую строку
 ;	ADD	R2,@SP
 ;	CMP	@SP,#1340
 ;	BGT	LS7
 LS4:	MOV	#5000,R2
-	MOV	2(R4),CURLIN
+	MOV	2(R4),CURLIN	; CURLIN = номер текущей строки (из записи таблицы)
    	CALL	ISVETO
 ;11$:	BIT	#37,@SP
 ;	BEQ	8$
 ;	INC	@SP
 ;	BR	11$
-8$:	CMP	-(R4),-(R4)
-	CMP	R4,@SP	;2(SP) PRIE PUSLAPIAVIMO
-	BHIS	LS3
+8$:	CMP	-(R4),-(R4)	; перейти к следующей записи таблицы строк
+	CMP	R4,@SP		;2(SP) PRIE PUSLAPIAVIMO
+	BHIS	LS3		; ещё в пределах диапазона => следующая строка =>
 ;	TST	IODEV
 ;	BEQ	LS8
-	CLR	IODEV
+	CLR	IODEV		; сбросить вывод на печать
 LS6:	CMP	(SP)+,(SP)+	;TST PRIE  PUSLAPIAVIMO
 ;	BNE	LS6
 LS66:	JMP	ST0
@@ -346,469 +372,497 @@ LS66:	JMP	ST0
 ;	TST	(SP)+
 ;	BR	LS2
 ;
+; LARG - разбор необязательного диапазона строк "[номер1][-[номер2]]" для
+; LIST/LLIST. Возвращает R4=начало, R0=конец диапазона в таблице строк.
 LARG:	CLR	-(SP)		;PIRMAS ARGUMENTAS
 	CALL	ARGUM		;ПРИЗНАК НАЛИЧИЯ ПЕРВОГО АРГУМЕНТА
-	BEQ	1$
-	INC	(SP)
-	TRAP	111
-	BR	11$
+	BEQ	1$		; первого аргумента нет =>
+	INC	(SP)		; отметить: первый аргумент есть (флаг=1)
+	TRAP	111		; найти номер строки в таблице
+	BR	11$		; найден точно =>
 	TST	4(SP)
-	BEQ	111$
-	NEG	(SP)
+	BEQ	111$		; таблица строк пуста => ошибка =>
+	NEG	(SP)		; не найден точно (взята ближайшая следующая): флаг=-1
 11$:	MOV	R4,-(SP)	; (SP)-PIRMOS EILUTES ADRESAS RYSIU LENT.
 	CMPB	#'-,(R3)	;AR YRA MINUSAS ?
-	BNE	4$
+	BNE	4$		; дефиса нет => один аргумент/без аргумента =>
 	INC	R3
 	CALL	ARGUM		;ANTRAS ARGUMENTAS
-	BEQ	3$
-	TRAP	111
-	BR	2$
+	BEQ	3$		; после "-" второго числа нет => до конца (TABTOP) =>
+	TRAP	111		; найти второй номер строки
+	BR	2$		; найден точно =>
 	TST	6(SP)
-	BEQ	111$
+	BEQ	111$		; таблица строк пуста => ошибка =>
 	TST	(R4)+		;ARGUMENTAS NURODYTAS KLAIDINGAI -
 31$:	CMP	(R4)+,(R4)+	;PASTUMIAM RODYKLE RYSIU LENTELEJE
-2$:	MOV	R4,R0
-	MOV	(SP)+,R4
-	TST	(SP)+
-	MOV	(SP)+,(SP)
-	TRAP	106
+2$:	MOV	R4,R0		; R0 = конец диапазона
+	MOV	(SP)+,R4	; R4 = начало диапазона (сохранённое в 11$)
+	TST	(SP)+		; снять флаг первого аргумента
+	MOV	(SP)+,(SP)	; вернуть на место R5, сохранённый вызывающим (LIST)
+	TRAP	106		; проверить конец оператора (лишних аргументов нет)
 	RETURN
-111$:	TRAP	8.
+111$:	TRAP	8.		; ошибка: аргумент вне программы
 ;
 1$:	MOV	FCB,R4		;PIRMO ARGUMENTO NERA => JIS = PIRMOS EILUTES
-	TST	-(R4)
+	TST	-(R4)		; нет первого аргумента => начало = первая строка программы
 	BR	11$
-4$:	TST	2(SP)
-	BGT	2$
-3$:	MOV	TABTOP,R4
+4$:	TST	2(SP)		; проверить флаг первого аргумента
+	BGT	2$		; найден точно => диапазон из одной строки =>
+3$:	MOV	TABTOP,R4	; аргументов нет вовсе => конец = TABTOP (весь текст)
 	BR	31$
 ;
-ARGUM:	TRAP	112
-	CMPB	#'.,(R3)
+; ARGUM - разобрать один аргумент-номер строки (для LARG): "." значит текущая
+; строка (CURLIN), иначе - числовой литерал через TRAP 110. Флаг "аргумент
+; есть/нет", проверяемый вызывающим (BEQ сразу после CALL ARGUM), судя по
+; всему, доносится из TRAP 110 через флаги процессора (RETURN их не меняет) -
+; точный механизм не выяснен до конца.
+ARGUM:	TRAP	112		; пропустить пробелы
+	CMPB	#'.,(R3)	; "." - сокращение для текущей строки?
 	BNE	2$
 	MOV	CURLIN,R5
 	INC	R3
 	RETURN
-2$:	TRAP	110
+2$:	TRAP	110		; разобрать числовой номер строки -> R5
 	CLR	R4
 	RETURN
 ;
-EILUTE::MOV	@R4,R5
-	CALL	IUNPCK
+EILUTE::MOV	@R4,R5		; R5 = поле записи (номер строки?)
+	CALL	IUNPCK		; сформировать его как десятичный текст в BUF
 	MOV	R5,R3
 	MOV	-(R4),R5
-	MOVB	(R5)+,R1
-	BEQ	1$
-	MOV	AOPNAM(R1),R1
+	MOVB	(R5)+,R1	; первый байт: код оператора-заголовка строки?
+	BEQ	1$		; нет заголовка =>
+	MOV	AOPNAM(R1),R1	; имя оператора из таблицы AOPNAM
 	MOV	#40,R0
-	CALL	INBUF
+	CALL	INBUF		; вывести имя оператора в BUF
 1$:	MOV	R5,R1
-	MOV	#12,R0
-	CALL	INBUF
+	MOV	#12,R0		; до символа LF
+	CALL	INBUF		; вывести остаток текста строки в BUF
 	MOV	#BUF,R1
 	RETURN
 ;
-STATM:	MOV	#400,LYGIS
+; STATM - выполнить оператор прямого режима (введённый без номера строки,
+; неопознанный как команда монитора). Компилирует его тем же обработчиком,
+; что и COMP.MAC (AOPSUB(R5)), в scratch-область сразу за кодом программы
+; (ENDCOD), дописывает переход на STAR как терминатор и запускает на
+; выполнение (VYK1) - после чего управление само вернётся в монитор.
+STATM:	MOV	#400,LYGIS	; отметить: выполняется оператор прямого режима
 	TST	STRREG
 	BNE	5$
-	CALL	STRMEM
-5$:	MOV	ENDCOD,R1
+	CALL	STRMEM		; область строк ещё не отведена - отвести
+5$:	MOV	ENDCOD,R1	; R1 -> куда компилировать (сразу за кодом программы)
 	CLR	TMP
 	MOV	#-1,NUMBER
-	CALL	@AOPSUB(R5)
-ASTAR::	MOV	#STAR,(R1)+
-	MOV	ENDCOD,R4
+	CALL	@AOPSUB(R5)	; скомпилировать оператор
+ASTAR::	MOV	#STAR,(R1)+	; терминатор: после выполнения - назад в монитор
+	MOV	ENDCOD,R4	; R4 -> начало скомпилированного оператора
 	CMP	R1,CIKL
-	BHIS	MEMORY
-	NEG	LYGIS
-	JMP	VYK1
+	BHIS	MEMORY		; скомпилированный код наехал на стек кадров => ошибка =>
+	NEG	LYGIS		; отметить "выполняется"
+	JMP	VYK1		; выполнить
 ;
 RUN::	MOV	FCB,R2
-	TRAP	110
-	MOV	-(R2),R5
-	TRAP	106
+	TRAP	110		; необязательный числовой аргумент; если есть - пропустить след. слово
+	MOV	-(R2),R5	; аргумента нет => R5 из FCB (по умолчанию)
+	TRAP	106		; конец оператора
 	CALL	CLOALL
 LRUN::	CMP	TABTOP,FCB
-	BEQ	KL1
-	TRAP	111
-	BR	1$
-	TRAP	8.
-1$:	JSR	R0,SETST
-	BR	4$
-	BR	KL1
-4$:   	CALL	CURON
-	MOV	#DATBEG,DATPTR
-	CLR	AUTOON
-	CLR	DATBEG
-2$:	INC	ERRS
-	BEQ	2$
-	INC	LYGIS
-	MOV	R4,ADRHLT
-	MOV	TABTOP,CIKL
+	BEQ	KL1		; программа пуста => в основной цикл монитора
+	TRAP	111		; искать номер строки R5 (см. RUN/RESTORE) в таблице строк
+	BR	1$		; строка найдена => разрешить ссылку на неё
+	TRAP	8.		; строка не найдена (сюда TRAP 111 попадает пропуском слова)
+1$:	JSR	R0,SETST	; попытаться сразу разрешить ссылку на строку запуска
+	BR	4$		; строка уже скомпилирована => запускать с неё
+	BR	KL1		; строка ещё не скомпилирована => в основной цикл монитора
+4$:   	CALL	CURON		; включить курсор
+	MOV	#DATBEG,DATPTR	; DATPTR = адрес ячейки DATBEG (начало цепочки DATA, пока пуста)
+	CLR	AUTOON		; очистить цепочку RESTORE-без-номера-строки
+	CLR	DATBEG		; цепочка DATA пуста
+2$:	INC	ERRS		; ERRS + 1
+	BEQ	2$		; ERRS не должен стать 0 (ненулевой - идёт компиляция, выполнение запрещено)
+	INC	LYGIS		; LYGIS + 1: идёт компиляция
+	MOV	R4,ADRHLT	; ADRHLT = адрес записи строки запуска
+	MOV	TABTOP,CIKL	; стек кадров пуст
 	MOV	TABTOP,LIMIT
 	MOV	TABTOP,LENT
 	CLR	STRREG
-	CALL	GRBCOL
+	CALL	GRBCOL		; уплотнить текст программы (MONIT.MAC); ВАЖНО: заодно
+				; возвращает R1 = ENDCOD - это и есть начальное
+				; значение указателя записи кода для всей компиляции
 	MOV	TABTOP,R0
+; Обнулить служебные слова (адрес перехода) каждой строки программы
+; перед компиляцией - используются ниже как цепочка forward-ссылок.
 3$:	CLR	(R0)+
 	CMP	(R0)+,(R0)+
 	CMP	R0,FCB
 	BLO	3$
-	CLR	PFACT
-	MOV	#STACK,SP
+	CLR	PFACT		; сбросить состояние разбора выражений
+	MOV	#STACK,SP	; свой стек на время компиляции
 COMPIL:	CMP	R0,TABTOP
-	BLOS	ENDTXT
-	MOV	-(R0),NUMBER
-	MOV	-(R0),R3
+	BLOS	ENDTXT		; строки кончились => эпилог
+	MOV	-(R0),NUMBER	; NUMBER = номер текущей строки
+	MOV	-(R0),R3	; R3 = адрес текста строки
 	TST	-(R0)
 	MOV	R0,R5
+; Разрешить цепочку GOTO/GOSUB-ссылок, ожидавших именно эту строку
+; (см. SETST/TO): пройти по цепочке и записать всем текущий адрес кода (R1).
 1$:	MOV	@R5,R2
 	MOV	R1,@R5
 	MOV	R2,R5
 	BNE	1$
-	MOVB	(R3)+,R2
+	MOVB	(R3)+,R2	; R2 = код оператора (индекс в AOPSUB)
 	CLR	TMP
 	CMP	R2,#AOPMON-AOPSUB
 	BLT	2$
 	TRAP	12.
-2$:	CALL	@AOPSUB(R2)
+2$:	CALL	@AOPSUB(R2)	; вызвать программу компиляции оператора
 	CMP	R1,LENT
-	BLOS	COMPIL
+	BLOS	COMPIL		; памяти хватает => к следующему оператору
 MEMORY:	CLR	LYGIS
 2$:	CMP	R1,TABTOP
-	BLOS	TXTSV
+	BLOS	TXTSV		; в пределах => завершить с ошибкой памяти =>
 	SUB	#6,TABTOP
 	BR	2$
 KL1:	JMP	STAR
 SET1:	CMPB	@-(4),#50	;REM
-	BEQ	1$
+	BEQ	1$		; строка начинается с REM =>
 	CMPB	@0(4),#2	;'
-	BEQ	1$
+	BEQ	1$		; или с "'" (комментарий) =>
 	CMPB	@0(4),#100	;DATA
-	BNE	SET2
-1$:	CMP	-(4),-(4)
+	BNE	SET2		; и не DATA => обычный случай =>
+1$:	CMP	-(4),-(4)	; REM/'/DATA => доп. отступ R4 на 4 байта
 SETST::	CMP	R4,TABTOP
-	BHIS	SET1
-	TST	(0)+
-SET2:	TST	-(4)
+	BHIS	SET1		; R4 в таблице строк => спец. обработка =>
+	TST	(0)+		; 1-пропуск возврата
+SET2:	TST	-(4)		; отступить R4 на 2 байта назад
 	RTS	R0
 TXTSV:	TRAP	7
 ENDTXT:	CMP	-2(R1),#ENDPRG
 	BEQ	2$
 	CMP	-2(R1),#HALT
 	BEQ	2$
-	MOV	#ENDPRG,(R1)+
-2$:	MOV	DATBEG,R0
-	BEQ	11$
-	MOV	R1,DATBEG
-1$:	MOV	2(0),R3
+	MOV	#ENDPRG,(R1)+	; в конце нет END/HALT => дописать ENDPRG
+2$:	MOV	DATBEG,R0	; R0 = начало цепочки DATA-строк (адреса в исходном тексте)
+	BEQ	11$		; цепочка пуста => пропустить копирование DATA
+	MOV	R1,DATBEG	; DATBEG теперь - куда скопированы DATA-строки в коде
+1$:	MOV	2(0),R3		; R3 = адрес текста очередной DATA-строки
 	INC	R3
-	MOV	@R0,R2
-	MOV	R1,@R0
+	MOV	@R0,R2		; R2 = адрес следующего звена цепочки
+	MOV	R1,@R0		; пропатчить звено на новое место в коде (R1)
 13$:	CMP	LENT,R1
 	BLOS	MEMORY
-	CMPB	@R3,#12
+	CMPB	@R3,#12		; конец строки текста (LF)?
 	BEQ	3$
-	MOVB	(3)+,(1)+
+	MOVB	(3)+,(1)+	; скопировать очередной символ DATA-строки
 	BR	13$
-3$:	CMP	R0,DATPTR
+3$:	CMP	R0,DATPTR	; это последнее звено цепочки?
 	BEQ	4$
-	MOVB	#54,(1)+
-	MOV	R2,R0
+	MOVB	#54,(1)+	; нет - вставить разделитель между DATA-строками
+	MOV	R2,R0		; => к следующему звену
 	BR	1$
-4$:	MOVB	@R3,(1)+
+4$:	MOVB	@R3,(1)+	; последнее звено - скопировать завершающий символ (LF)
 11$:	MOV	DATBEG,DATPTR
+; Разрешение цепочки AUTOON: для каждого RESTORE-без-номера ищем ближайший
+; предшествующий DATA (опкод #100) в таблице строк программы.
 	MOV	AUTOON,R0
-	BEQ	10$
-7$:	MOV	@R0,R4
+	BEQ	10$		; цепочка пуста => пропустить
+7$:	MOV	@R0,R4		; R4 = позиция в тексте программы, откуда искать DATA
 5$:	CMPB	@(4),#100	;DATA
 	BEQ	6$
-	SUB	#6,R4
+	SUB	#6,R4		; нет - к предыдущему оператору
 	CMP	R4,TABTOP
 	BHI	5$
-	CLR	@R0
+	CLR	@R0		; DATA не найден - очистить ссылку
 	BR	8$
-6$:	MOV	-(4),@R0
-8$:	MOV	-(0),R4
-	MOV	#RESTV,@R0
+6$:	MOV	-(4),@R0	; DATA найден - записать его адрес в ссылку RESTORE
+8$:	MOV	-(0),R4		; R4 = предыдущее звено цепочки AUTOON
+	MOV	#RESTV,@R0	; восстановить опкод RESTV на месте ссылки
 	MOV	R4,R0
-	BNE	7$
+	BNE	7$		; => обработать следующее звено
 10$:	MOV	R1,ENDCOD
 	CALL	STRMEM
-	MOV	@ADRHLT,R4
-	DEC	LYGIS
-VYK2:	CLR	ADRHLT
-	CLR	ERRS
+	MOV	@ADRHLT,R4	; R4 = адрес кода строки запуска (по ADRHLT)
+	DEC	LYGIS		; LYGIS - 1: компиляция закончена
+VYK2:	CLR	ADRHLT		; сбросить адрес останова (CONT пока невозможен)
+	CLR	ERRS		; ERRS = 0: выполнение разрешено
 	CLR	AUTOON
 	CLR	NUMBER
 	TST	TRFLAG
-	BEQ	VYKDYT
-	JMP	TRIN
+	BEQ	VYKDYT		; трассировка выключена => просто продолжить =>
+	JMP	TRIN		; включена => заново поставить точку останова =>
 VYKDYT::MOV	#-1,LYGIS
 VYK1:	CALL	CUROFF
-	CLR	INK
-	JMP	@(R4)+
+	CLR	INK		; сбросить код нажатой клавиши (INKEY)
+	JMP	@(R4)+		; запустить интерпретатор: первый опкод по R4
 ;
 PRGFUL:	TRAP	17.
 ;
 CONT:	TST	ERRS
-	BNE	PRGFUL
+	BNE	PRGFUL		; выполнение запрещено => ошибка =>
 	MOV	ADRHLT,R4
 	BEQ	KL1
 	BR	VYK2
 ;
+; Работа с магнитофоном. Операторы готовят блок параметров монитора БК по адресу
+; MAG (320 окт.) и вызывают драйвер (CAS: MAGNIT - EMT 36, либо IRPS - внешний
+; последовательный обмен, выбирается префиксом "TT:" в TTANAL):
+;  MAG+0 команда (2 запись, 3 чтение, 4 - см. FIND), MAG+1 результат (см. CASERR),
+;  MAG+2 адрес данных, MAG+4 длина, MAG+6 имя (16 байт: 6 символов имени и
+;  расширение, которое добавляют ASC/COD/BIN/DAT; текстовые файлы идут блоками
+;  по 256 байт с номером блока ".ASC # 000", BLOCKN увеличивает номер),
+;  MAG+26 адрес, MAG+30 длина и MAG+32 имя (16 байт) фактически найденного файла.
 ;MERGE:	MOV	#-1,-(SP)
 ;	BR	L0
 ;
-LOAD:	CMP	TABTOP,FCB
-	BEQ	1$
-	TRAP	5
-1$:	CLR	-(SP)
+LOAD:	CMP	TABTOP,FCB	; программа уже есть (таблица строк не пуста)?
+	BEQ	1$		; нет =>
+	TRAP	5		; программа уже есть - ошибка 5 (LOAD только в пустую память)
+1$:	CLR	-(SP)		; флаг запуска после загрузки: 0 - не запускать
 L0:	MOV	#MAG,R0
-	MOV	#3,(R0)+
-	MOV	FCB,(0)+
-	MOV	#400,-(SP)
-	MOV	@SP,(0)+
-	CALL	FILNAM
-	CALL	ASC
+	MOV	#3,(R0)+	; команда 3 - чтение
+	MOV	FCB,(0)+	; адрес данных = FCB (буфер блока над программой)
+	MOV	#400,-(SP)	; длина блока 400 окт. (256 байт)
+	MOV	@SP,(0)+	; (копия длины - в блок параметров)
+	CALL	FILNAM		; имя файла из кавычек оператора -> MAG+6
+	CALL	ASC		; расширение ".ASC # 000": текстовый файл блоками по 256 байт
 ;	TST	2(SP)
 ;	BMI	11$
-	CMPB	@R3,#',
+	CMPB	@R3,#',		; после имени ','?
 	BNE	11$
 	INC	R3
-	TRAP	101
+	TRAP	101		; буква R (запустить после загрузки)?
 	.WORD	RDRM
-	TRAP	2
-	INC	2(SP)
-11$:	TRAP	106
-	CALL	CAS
-	CALL	ISVARD
-	MOV	FCB,-(SP)
-4$:	MOV	(SP)+,R3
-	MOV	SP,R0
-	MOV	#MAG+26,R5
-	CALL	COPYIN
-	CMP	R1,#BUF
+	TRAP	2		; нет - ошибка синтаксиса
+	INC	2(SP)		; флаг запуска = 1
+11$:	TRAP	106		; конец оператора
+	CALL	CAS		; прочитать первый блок (поиск файла по имени)
+	CALL	ISVARD		; показать имя найденного файла
+	MOV	FCB,-(SP)	; адрес блока в буфере
+4$:	MOV	(SP)+,R3	; R3 = позиция чтения в буфере блока
+	MOV	SP,R0		; R0 -> параметры блока
+	MOV	#MAG+26,R5	; R5 -> имя и состояние найденного файла (MAG+26)
+	CALL	COPYIN		; COPYIN: выбрать очередную строку из блока в BUF (при необходимости читает следующий блок)
+	CMP	R1,#BUF		; строк больше нет =>
 	BEQ	L6
-	MOV	R3,-(SP)
-	JSR	R1,ASCCOD
-	BR	7$
-	BR	4$
-7$:	MOV	#12,R0
+	MOV	R3,-(SP)	; запомнить позицию чтения
+	JSR	R1,ASCCOD	; ввести строку как набранную с клавиатуры
+	BR	7$		; строка без номера (директива монитора) =>
+	BR	4$		; строка программы сохранена - следующая =>
+7$:	MOV	#12,R0		; в файле строка без номера: вывести перевод строки
 	MOVB	R0,#BUF
 	CALL	ISV
-	TRAP	57.
-L6:	TST	(SP)+
-L1:	CALL	LASTBL
-L2:	CALL	CAS
-	CALL	TESTR
-	JMP	ST0
+	TRAP	57.		; ошибка 57
+L6:	TST	(SP)+		; снять позицию чтения
+L1:	CALL	LASTBL		; LASTBL: подготовить имя для чтения следующих блоков (назначение не выяснено до конца)
+L2:	CALL	CAS		; прочитать блок
+	CALL	TESTR		; запустить программу, если был флаг R
+	JMP	ST0		; в монитор
 ;
-FIND:	MOV	#MAGNIT,WRITE
-	MOV	#MAG,R0
-	MOV	#4,(R0)+
-	CMP	(R0)+,(R0)+
-	CLR	@R0
-	CLR	-(SP)
+FIND:	MOV	#MAGNIT,WRITE	; драйвер обмена - магнитофон (MAGNIT)
+	MOV	#MAG,R0		; блок параметров магнитофона
+	MOV	#4,(R0)+	; команда 4 (назначение не выяснено до конца; по смыслу оператора FIND - поиск файла)
+	CMP	(R0)+,(R0)+	; пропустить адрес и длину
+	CLR	@R0		; имя пока пусто
+	CLR	-(SP)		; три слова на стеке под дескриптор литерала (SCONST, адрес, длина)
 	CMP	-(SP),-(SP)
-	MOV	SP,R1
-	TRAP	120
+	MOV	SP,R1		; R1 -> этот буфер: TRAP 120 запишет дескриптор в него, а не в код
+	TRAP	120		; имя - строковый литерал в кавычках?
 	NOP
-	TRAP	106
-	TST	(SP)+
-	MOV	2(SP),R1
-	BEQ	L6
+	TRAP	106		; конец оператора
+	TST	(SP)+		; снять слово SCONST
+	MOV	2(SP),R1	; R1 = длина имени
+	BEQ	L6		; пустая строка - переход к общему концу =>
 	MOV	(SP)+,@SP
 	MOV	R1,-(SP)
-	CALL	NAMTYP
-	MOV	#MAG+13.,R3
-	TRAP	113
+	CALL	NAMTYP		; подготовить имя (NAMTYP)
+	MOV	#MAG+13.,R3	; R3 -> расширение имени в MAG
+	TRAP	113		; расширение .COD или .BIN (таблица FILTYP)?
 	.WORD	FILTYP
 	.BYTE	3,2
 	BR	1$
-	DEC	R3
+	DEC	R3		; вернуться к началу расширения
 	MOV	R3,R0
-	CALL	@BINCOD(R5)
+	CALL	@BINCOD(R5)	; прочитать файл способом по типу (CODEND/BINEND)
 	CLR	-(SP)
 	BR	L2
 1$:	CLR	-(SP)
 	BR	L1
 ;
-BLOAD:	MOV	#MAG,R0
-	MOV	#3,(0)+
-	CMP	(0)+,(0)+
-	CALL	FILNAM
-	CALL	BIN
-	SUB	#24,R0
-	CLR	-(SP)
-	CLR	R5
-	CMPB	@R3,#',
+BLOAD:	MOV	#MAG,R0		; BLOAD "имя"[,адрес][,R]: загрузка блока памяти
+	MOV	#3,(0)+		; команда 3 - чтение
+	CMP	(0)+,(0)+	; адрес и длина пока не заданы
+	CALL	FILNAM		; имя файла
+	CALL	BIN		; расширение ".BIN"
+	SUB	#24,R0		; R0 -> MAG+2 (адрес загрузки)
+	CLR	-(SP)		; флаг запуска = 0
+	CLR	R5		; адрес 0 - загружать по записанному в файле
+	CMPB	@R3,#',		; есть ',' (адрес указан)?
 	BNE	2$
 	INC	R3
-	TRAP	101
+	TRAP	101		; 'R' вместо адреса?
 	.WORD	RDRM
 	BR	1$
-	INC	@SP
+	INC	@SP		; да - флаг запуска = 1
 	TRAP	112
-	CMPB	@R3,#',
+	CMPB	@R3,#',		; ещё ','?
 	BNE	2$
-	INC	R3
-1$:	CALL	SAVPAP
-2$:	MOV	R5,(0)+
+	INC	R3		; запятая есть, но значения после неё нет
+1$:	CALL	SAVPAP		; разобрать адрес
+2$:	MOV	R5,(0)+		; записать адрес загрузки
 	TRAP	106
-	CALL	CAS
-	CALL	ISVARD
-	TST	(SP)+
-	BEQ	ST
-	JMP	@MSTART
+	CALL	CAS		; читать файл
+	CALL	ISVARD		; показать имя
+	TST	(SP)+		; снять флаг запуска
+	BEQ	ST		; не запускать =>
+	JMP	@MSTART		; запустить загруженное с адреса MSTART
 ;
-SAVPAP:	TRAP	112
-	CMPB	(3)+,#'&
+SAVPAP:	TRAP	112		; SAVPAP: число - адрес: &H.. или десятичное
+	CMPB	(3)+,#'&	; '&'?
 	BNE	11$
-	CALL	BOHPAP
+	CALL	BOHPAP		; число в другой системе счисления
 	RETURN
-11$:	DEC	R3
-	TRAP	110
-	TRAP	2
+11$:	DEC	R3		; десятичное: вернуть символ
+	TRAP	110		; разобрать
+	TRAP	2		; нет числа - ошибка синтаксиса
 	RETURN
 ;
-BSAVE:	MOV	#MAG,R0
-	MOV	#2,(0)+
-	CMP	(0)+,(0)+
-	CALL	FILNAM
-	CALL	BIN
-	SUB	#24,R0
-	TRAP	126
-	CALL	SAVPAP
-	MOV	R5,(0)+
-	MOV	R5,R2
-	TRAP	126
-	CALL	SAVPAP
-	SUB	R2,R5
-	BLO	CL0
-	MOV	R5,(0)+
+BSAVE:	MOV	#MAG,R0		; BSAVE "имя",начало,конец: запись блока памяти
+	MOV	#2,(0)+		; команда 2 - запись
+	CMP	(0)+,(0)+	; адрес и длина пока не заданы
+	CALL	FILNAM		; имя файла
+	CALL	BIN		; расширение ".BIN"
+	SUB	#24,R0		; R0 -> MAG+2
+	TRAP	126		; обязательная запятая
+	CALL	SAVPAP		; начальный адрес
+	MOV	R5,(0)+		; записать в блок параметров
+	MOV	R5,R2		; запомнить его
+	TRAP	126		; запятая
+	CALL	SAVPAP		; конечный адрес
+	SUB	R2,R5		; длина = конец - начало
+	BLO	CL0		; отрицательная - ошибка 5 =>
+	MOV	R5,(0)+		; записать длину
 	TRAP	106
-	CALL	CAS
-	BR	ST
+	CALL	CAS		; записать на ленту
+	BR	ST		; в монитор
 ;
 CL0:	TRAP	5
 ;
-CLOAD:	CMP	TABTOP,FCB
-	BNE	CL0
-	MOV	TABTOP,CIKL
+CLOAD:	CMP	TABTOP,FCB	; CLOAD "имя"[,R]: загрузка программы в кодовом виде
+	BNE	CL0		; программа уже есть - ошибка 5
+	MOV	TABTOP,CIKL	; сбросить указатели таблиц
 	MOV	TABTOP,LIMIT
 	MOV	TABTOP,LENT
 	CLR	STRREG
-	MOV	#MAG,R0
-	MOV	#3,(R0)+
-	MOV	#TEXT,(R0)+
-	MOV	FCB,@R0
+	MOV	#MAG,R0		; блок параметров
+	MOV	#3,(R0)+	; команда 3 - чтение
+	MOV	#TEXT,(R0)+	; адрес загрузки - TEXT
+	MOV	FCB,@R0		; длина - от TEXT до FCB
 	SUB	#TEXT,(R0)+
-	CALL	FILNAM
-	CLR	-(SP)
-	CMPB	@R3,#',
+	CALL	FILNAM		; имя файла
+	CLR	-(SP)		; флаг запуска = 0
+	CMPB	@R3,#',		; есть ','?
 	BNE	CL1
 	INC	R3
 	TRAP	101
 	.WORD	RDRM
 	TRAP	2
-	INC	@SP
-CL1:	CALL	COD
+	INC	@SP		; флаг запуска = 1
+CL1:	CALL	COD		; расширение ".COD"
 	TRAP	106
-	CALL	CAS
-	MOV	#MAG+26,R3
-	MOV	(R3)+,R2
-	MOV	@R3,R0
-	MOV	#TEXT,R3
-	ADD	R3,R0
-	SUB	R2,R3
-	MOV	FCB,R2
+	CALL	CAS		; прочитать файл
+	MOV	#MAG+26,R3	; R3 -> фактические адрес и длина (MAG+26)
+	MOV	(R3)+,R2	; R2 = адрес, с которого программа была записана
+	MOV	@R3,R0		; R0 = длина
+	MOV	#TEXT,R3	; R3 = TEXT
+	ADD	R3,R0		; R0 -> конец загруженного
+	SUB	R2,R3		; R3 = смещение релокации (новый адрес минус старый)
+	MOV	FCB,R2		; R2 -> верх таблицы строк
 	MOV	R2,R4
-	SUB	-(R0),R4
-5$:	MOV	-(R0),-(R2)
+	SUB	-(R0),R4	; R4 = новое дно таблицы строк
+5$:	MOV	-(R0),-(R2)	; перенести записи таблицы строк обратно к FCB
 	MOV	-(R0),-(R2)
-	ADD	R3,@R2
+	ADD	R3,@R2		; и настроить адрес текста строки на смещение
 	MOV	-(R0),-(R2)
 	CMP	R2,R4
 	BHI	5$
-	MOV	R0,ENDCOD
+	MOV	R0,ENDCOD	; ENDCOD и TXEND - конец загруженного текста
 	MOV	R0,TXEND
-	MOV	R2,LENT
+	MOV	R2,LENT		; новые границы таблиц
 	MOV	R2,LIMIT
 	MOV	R2,CIKL
-	MOV	R4,TABTOP
-	CALL	TESTR
+	MOV	R4,TABTOP	; TABTOP - новая вершина таблицы строк
+	CALL	TESTR		; запустить, если был флаг R
 ST:	JMP	STAR
 ;
-TESTR:	CALL	ISVARD
-	MOV	(SP)+,R5
-	TST	(SP)+
-	BLE	1$
+TESTR:	CALL	ISVARD		; TESTR: показать имя файла
+	MOV	(SP)+,R5	; R5 = адрес возврата
+	TST	(SP)+		; флаг запуска
+	BLE	1$		; не запускать =>
 	MOV	FCB,R4
-	MOV	-(R4),R5
-	JMP	LRUN
-1$:	MOV	R5,PC
+	MOV	-(R4),R5	; номер первой строки
+	JMP	LRUN		; запустить программу
+1$:	MOV	R5,PC		; вернуться
 ;
-CSAVE:	CMP	TABTOP,FCB
-	BEQ	ST
+CSAVE:	CMP	TABTOP,FCB	; CSAVE "имя": запись программы в кодовом виде
+	BEQ	ST		; программы нет - ничего не делать =>
 	MOV	#MAG,R0
-	MOV	#2,(R0)+
-	MOV	#TEXT,(R0)+
-	MOV	R3,-(SP)
-	CALL	GRBCOL
-	MOV	R1,R5
-	MOV	TABTOP,R4
-	MOV	R5,@R0
+	MOV	#2,(R0)+	; команда 2 - запись
+	MOV	#TEXT,(R0)+	; адрес данных - TEXT
+	MOV	R3,-(SP)	; сохранить R3
+	CALL	GRBCOL		; уплотнить текст программы (R1 = ENDCOD)
+	MOV	R1,R5		; R5 = конец текста
+	MOV	TABTOP,R4	; R4 = таблица строк
+	MOV	R5,@R0		; длина = от TEXT до конца текста + таблицы
 	SUB	#TEXT-2,(R0)+
-	MOV	(SP)+,R3
+	MOV	(SP)+,R3	; имя файла
 	CALL	FILNAM
-	CALL	COD
-	TRAP	106
-	MOV	@PC,ERRS
-7$:	MOV	(R4)+,(R5)+
+	CALL	COD		; расширение ".COD"
+	TRAP	106		; конец оператора
+	MOV	@PC,ERRS	; запретить выполнение (ERRS<>0), пока таблица перенесена
+7$:	MOV	(R4)+,(R5)+	; дописать таблицу строк сразу за текстом
 	CMP	R4,FCB
 	BLO	7$
 	MOV	R4,@R5
-	SUB	TABTOP,(R5)
+	SUB	TABTOP,(R5)	; длина таблицы
 	MOV	#MAG,R1
-	ADD	(R5)+,4(R1)
-	CALL	@WRITE
-	CALL	ATSTAB
-	CALL	CASERR
+	ADD	(R5)+,4(R1)	; прибавить к длине блока
+	CALL	@WRITE		; записать через драйвер (магнитофон или ИРПС)
+	CALL	ATSTAB		; вернуть таблицу строк на место
+	CALL	CASERR		; проверить результат
 	BR	ST
-SAVE:	CMP	TABTOP,FCB
-	BEQ	ST
+SAVE:	CMP	TABTOP,FCB	; SAVE "имя": запись программы текстом
+	BEQ	ST		; программы нет =>
 	MOV	#MAG,R0
-	MOV	#2,(R0)+
-	MOV	FCB,R4
-	MOV	R4,(R0)+
-	MOV	#400,(R0)+
-	CLR	-(SP)
-	CALL	FILNAM
-	CALL	ASC
-	TRAP	106
-	MOV	R4,-(SP)
-	TST	-(R4)
-1$:	CALL	EILUTE
-	CMP	-(R4),-(R4)
-	MOV	(SP)+,R3
+	MOV	#2,(R0)+	; команда 2 - запись
+	MOV	FCB,R4		; R4 = таблица строк
+	MOV	R4,(R0)+	; адрес данных - FCB
+	MOV	#400,(R0)+	; длина блока 400 окт.
+	CLR	-(SP)		; флаг: 0
+	CALL	FILNAM		; имя файла
+	CALL	ASC		; расширение ".ASC # 000"
+	TRAP	106		; конец оператора
+	MOV	R4,-(SP)	; запомнить R4
+	TST	-(R4)		; к первой записи
+1$:	CALL	EILUTE		; собрать строку в BUF (EILUTE)
+	CMP	-(R4),-(R4)	; к следующей записи
+	MOV	(SP)+,R3	; R3 = позиция записи в буфере блока
 	MOV	SP,R0
-	MOV	#MAG+26,R5
-	CALL	COPOUT
+	MOV	#MAG+26,R5	; R5 -> имя и состояние (MAG+26)
+	CALL	COPOUT		; COPOUT: добавить строку в блок, при заполнении записать его
 	MOV	R3,-(SP)
-	CMP	R4,TABTOP
+	CMP	R4,TABTOP	; ещё есть строки?
 	BHI	1$
-	CALL	CLOUTF
-	CMP	(SP)+,(SP)+
-ST0:	MOV	#12,BUF
-	BR	ST
+	CALL	CLOUTF		; CLOUTF: дописать последний блок (конец файла ^Z)
+	CMP	(SP)+,(SP)+	; снять стек
+ST0:	MOV	#12,BUF		; в BUF перевод строки
+	BR	ST		; в монитор
 ;
-FILTYP:	.ASCII	/COD BIN /
-RDRM:	.BYTE	'R,162,0
-TT:	.BYTE	'T,164,0
-BINCOD:	.WORD	CODEND,BINEND
+FILTYP:	.ASCII	/COD BIN /	; FILTYP: расширения .COD и .BIN (для FIND)
+RDRM:	.BYTE	'R,162,0	; RDRM: буква R (запуск после загрузки)
+TT:	.BYTE	'T,164,0	; TT: префикс TT: (обмен через ИРПС)
+BINCOD:	.WORD	CODEND,BINEND	; BINCOD: таблица способов чтения .COD / .BIN
 ;
-ISVARD::TSTB	LYGIS
+ISVARD::TSTB	LYGIS		; ISVARD: показать имя найденного файла, если не идёт выполнение программы
 	BNE	1$
 	MOV	#MAG+32,R1
 	MOV	#20,R2
@@ -817,32 +871,32 @@ ISVARD::TSTB	LYGIS
 	CALL	ISV
 1$:	RETURN
 ;
-FILNAM:
-	CMPB	(R3)+,#'"
+FILNAM:				; FILNAM: скопировать имя файла из кавычек (до 6 символов) в MAG+6, остальное - пробелы
+	CMPB	(R3)+,#'"	; открывающая кавычка?
 	BNE	7$
-	CALL	TTANAL
-	MOV	#6,R2
+	CALL	TTANAL		; префикс TT:?
+	MOV	#6,R2		; не более 6 символов
 1$:	CMPB	@R3,#'"
 	BEQ	2$
 	CMPB	@R3,#12
 	BEQ	2$
 	MOVB	(R3)+,(R0)+
 	SOB	R2,1$
-2$:	CMP	R2,#6
+2$:	CMP	R2,#6		; имя пустое?
 	BNE	4$
-	TRAP	56.
-3$:	MOVB	#40,(R0)+
+	TRAP	56.		; пустое имя - ошибка 56
+3$:	MOVB	#40,(R0)+	; добить имя пробелами
 4$:	DEC	R2
 	BGE	3$
-5$:	CMPB	@R3,#12
+5$:	CMPB	@R3,#12		; пропустить остаток до закрывающей кавычки
 	BEQ	6$
 	CMPB	(R3)+,#'"
 	BNE	5$
 6$:	TRAP	112
 	RETURN
-7$:	TRAP	13.
+7$:	TRAP	13.		; нет кавычки - ошибка 13
 ;
-TTANAL::MOV	#MAGNIT,WRITE
+TTANAL::MOV	#MAGNIT,WRITE	; TTANAL: разбор префикса "TT:" - выбор устройства обмена (по умолчанию магнитофон)
 	MOV	R4,-(SP)
 	MOV	R3,-(SP)
 	TRAP	101
@@ -864,38 +918,38 @@ TTANAL::MOV	#MAGNIT,WRITE
 13$:	MOV	(SP)+,R4
 	RETURN
 ;
-BIN:	MOV	#".B,(R0)+
+BIN:	MOV	#".B,(R0)+	; BIN: расширение ".BIN" (и пробелы)
 	MOV	#"IN,(R0)+
 BINEND:	MOV	#20040,(R0)+
 	MOV	#20040,(R0)+
 	MOV	#20040,(R0)+
 	RTS	PC
 ;
-COD:	MOV	#".C,(R0)+
+COD:	MOV	#".C,(R0)+	; COD: расширение ".COD" (и нули)
 	MOV	#"OD,(R0)+
 CODEND:	CLR	(R0)+
 	CLR	(R0)+
 	CLR	(R0)+
 	RTS	PC
 ;
-ASC:	MOV	#".A,(R0)+
+ASC:	MOV	#".A,(R0)+	; ASC: расширение ".ASC # 000" - блоки текстового файла
 	MOV	#"SC,(R0)+
 BLOCK0::MOV	#" #,(R0)+
 	MOV	#"00,(R0)+
 	MOV	#15060,(R0)+
 	RETURN
 ;
-DAT::	MOV	#".D,(R0)+
+DAT::	MOV	#".D,(R0)+	; DAT: расширение ".DAT # 000" - блоки файла данных
 	MOV	#"AT,(R0)+
 	BR	BLOCK0
 ;
-LASTBL::MOV	#MAG+21,R1
+LASTBL::MOV	#MAG+21,R1	; LASTBL: обнулить хвост имени в MAG (назначение не выяснено до конца)
 	MOVB	#40,(R1)+
 	CLR	(R1)+
 	CLR	(R1)+
 	RETURN
 ;
-ATSTAB:	CMP	R5,TABTOP
+ATSTAB:	CMP	R5,TABTOP	; ATSTAB: вернуть таблицу строк на место после CSAVE
 	BLO	2$
 	MOV	R5,R4
 	SUB	FCB,R4
@@ -905,7 +959,7 @@ ATSTAB:	CMP	R5,TABTOP
 	BHI	1$
 2$:	RETURN
 ;
-CASCII::TST	LYGIS
+CASCII::TST	LYGIS		; CASCII: подготовить блок параметров для файла данных
 	BEQ	2$
 	MOV	#MAG,R1
 	MOV	(0)+,(1)+
@@ -918,23 +972,23 @@ CASCII::TST	LYGIS
 	MOV	R0,R5
 	SUB	#22,R0
 2$:	RETURN
-CAS::	MOV	#MAG,R1
+CAS::	MOV	#MAG,R1		; CAS: выполнить обмен через драйвер (MAGNIT или ИРПС)
 	CALL	@WRITE
-CASERR:	MOVB	1(R1),R1
-	BEQ	2$
+CASERR:	MOVB	1(R1),R1	; CASERR: результат обмена из MAG+1
+	BEQ	2$		; 0 - норма =>
 	DEC	R1
-	BEQ	1$
+	BEQ	1$		; 1 - найден другой файл: показать имя и повторить =>
 	DEC	R1
-	BEQ	3$
-	JMP	BREAK
-1$:	CALL	ISVARD
+	BEQ	3$		; 2 - ошибка чтения =>
+	JMP	BREAK		; иначе - нажата СТОП
+1$:	CALL	ISVARD		; показать имя найденного файла
 	BR	CAS
 2$:	RETURN
-3$:	MOV	#12,R0
+3$:	MOV	#12,R0		; ошибка чтения: перевод строки
 	CALL	ISV
-	TRAP	19.
+	TRAP	19.		; ошибка 19
 ;
-BLOCKN::MOV	#3,R1
+BLOCKN::MOV	#3,R1		; BLOCKN: увеличить номер блока (3 цифры) в имени файла
 	DEC	R5
 6$:	CMPB	-(R5),#'9
 	BNE	7$
@@ -944,52 +998,67 @@ BLOCKN::MOV	#3,R1
 7$:	INCB	@R5
 	RETURN
 ;
-BC::	ADD	#16,SP
+; BC - вход из экранного редактора (BK.MAC, обработка клавиши возврата строки
+; при курсоре в начале буфера BUF, если не идёт выполнение программы):
+; отбрасывает часть стека (7 слов) и входит в редактирование строки BUF с
+; начала (общий хвост EDIT, см. E4 ниже). Закомментированный код (LISTBC) -
+; неиспользуемая альтернатива. Подробности вызова не выяснены до конца.
+BC::	ADD	#16,SP		; отбросить 7 слов стека
 ;	TST	LYGIS
 ;	BGT	1$
 	CLR	R2
 	MOV	#BUF,R3
 	MOV	R3,R1
-	BR	E4
+	BR	E4		; => войти в редактирование строки (см. EDIT)
 ;1$:	JMP	LISTBC
 ;
-EDAUIN:	TRAP	111
-	BR	E6
-	CALL	IUNPCK
-	CALL	ISVEIL
+; EDAUIN - в AUTO-режиме (AUNEXT) подготовить ввод очередной строки с
+; вычисленным номером. Если строка с таким номером уже существует - зайти в
+; её редактирование как EDIT (E6 - общий код с EDIT). Иначе - подготовить
+; пустой буфер BUF для ввода новой строки (общий хвост с EDIT - EDEND).
+EDAUIN:	TRAP	111		; найти строку с номером R5 в таблице
+	BR	E6		; найдена => редактировать её (см. EDIT) =>
+	CALL	IUNPCK		; номер строки (R5) -> десятичный текст в BUF
+	CALL	ISVEIL		; вывести приглашение (номер строки)
 	MOV	R1,R2
-	SUB	#BUF,R2
+	SUB	#BUF,R2		; R2 = текущая длина введённого (0)
 	MOV	R1,R3
-	BR	EDEND
+	BR	EDEND		; => завершить подготовку ввода (см. EDIT)
 ;
+; EDIT - команда монитора: отредактировать строку (по умолчанию - текущую,
+; или указанную числом). Находит её (TRAP 111), собирает читаемый текст в
+; BUF (E6, тот же приём, что и EILUTE), затем передаёт готовый BUF в IVEIL для
+; интерактивного редактирования, подменив адрес возврата на ANALIZ (EDEND) -
+; после правки текст пройдёт через обычный разбор строки, как при вводе
+; заново. E4/EDAUIN используют этот же хвост для набора пустой новой строки.
 EDIT:	CLR	R2
-	MOV	CURLIN,R0
-	TRAP	110
+	MOV	CURLIN,R0	; по умолчанию - текущая строка
+	TRAP	110		; разобрать номер строки, если указан
 	MOV	R0,R5
-E0:	TRAP	106
-	TRAP	111
-	BR	E6
-	TRAP	8.
-E6:	CALL	IUNPCK
+E0:	TRAP	106		; конец оператора (лишних аргументов нет)
+	TRAP	111		; найти строку с номером R5
+	BR	E6		; найдена =>
+	TRAP	8.		; не найдена => ошибка
+E6:	CALL	IUNPCK		; номер строки (R5) -> десятичный текст в BUF
 	MOV	-(R4),R4
 	MOV	R5,R3
-	MOVB	(R4)+,R1
+	MOVB	(R4)+,R1	; первый байт: код оператора-заголовка?
 	BEQ	1$
-	MOV	AOPNAM(R1),R1
+	MOV	AOPNAM(R1),R1	; имя оператора из AOPNAM
 	MOV	#40,R0
-	CALL	INBUF
+	CALL	INBUF		; вывести имя оператора в BUF
 1$:	MOV	R4,R1
-E4:	MOV	#12,R0
-	CALL	INBUF
+E4:	MOV	#12,R0		; до LF
+	CALL	INBUF		; скопировать остаток текста строки в BUF
 	MOV	#BUF,R1
 	DEC	R3
 	DEC	R2
 	BEQ	5$
 	MOV	R2,R0
-	CALL	ISVEIL
+	CALL	ISVEIL		; вывести текст строки на экран
 	MOV	R0,R2
 5$:	MOV	R3,R1
-EDEND:	MOV	#ANALIZ,-(SP)
+EDEND:	MOV	#ANALIZ,-(SP)	; после редактирования - сразу на разбор строки
 	MOV	R0,-(SP)
 	MOV	R2,-(SP)
 	MOV	R3,-(SP)
@@ -1000,30 +1069,34 @@ EDEND:	MOV	#ANALIZ,-(SP)
 	NEG	R2
 	JMP	PIJ
 ;
+; AUTO - команда монитора: "AUTO [начало][,шаг]" (по умолчанию 10,10).
+; Разбирает необязательные начало (R2) и шаг (R5), включает AUTOON (флаг
+; через самоадрес PC, как в CLRCOD/ERRS), CURLIN/AUINC = начало/шаг, и
+; переходит к вводу первой строки (EDAUIN).
 AUTO:	CALL	CURON
 	CLR	R2
-	CMPB	#',,@R3
+	CMPB	#',,@R3		; сразу запятая (начало не указано)?
 	BEQ	2$
-	MOV	#12,R2
-	CALL	ARGUM
-	BEQ	2$
-	MOV	R5,R2
-2$:	TRAP	112
-	MOV	#12,R5
-	CMPB	#',,@R3
-	BNE	4$
-3$:	MOV	AUINC,R0
-	INC	R3
-	TRAP	110
+	MOV	#12,R2		; значение по умолчанию (10) на случай отсутствия аргумента
+	CALL	ARGUM		; разобрать начальный номер строки
+	BEQ	2$		; не указан => оставить по умолчанию =>
+	MOV	R5,R2		; указан => R2 = начальный номер
+2$:	TRAP	112		; пропустить пробелы
+	MOV	#12,R5		; шаг по умолчанию (10)
+	CMPB	#',,@R3		; есть "," (указан шаг)?
+	BNE	4$		; нет => оставить шаг по умолчанию =>
+3$:	MOV	AUINC,R0	; запасное значение - текущий AUINC
+	INC	R3		; пропустить ","
+	TRAP	110		; разобрать шаг
 	MOV	R0,R5
 	TST	R5
-	BEQ	ILCALL
-4$:	TRAP	106
-	MOV	@PC,AUTOON
-	MOV	R2,CURLIN
-	MOV	R5,AUINC
-	MOV	R2,R5
-	BR	EDAUIN
+	BEQ	ILCALL		; шаг = 0 => ошибка =>
+4$:	TRAP	106		; конец оператора
+	MOV	@PC,AUTOON	; включить AUTO-режим (ненулевой флаг)
+	MOV	R2,CURLIN	; текущая строка = начало
+	MOV	R5,AUINC	; запомнить шаг
+	MOV	R2,R5		; R5 = номер первой строки для ввода
+	BR	EDAUIN		; => подготовить ввод первой строки
 ;
 INBUF:	MOVB	(1),(3)+
 	INC	R2
@@ -1037,94 +1110,109 @@ DELETE:	CLR	-(SP)
 	CALL	DELINT
 	JMP	STAR
 ;
+; ISGUNP - преобразовать знаковое целое R5 в десятичную строку в BUFOUT
+; (ведущий пробел или "-" для отрицательных), используя I1 (общий код с
+; IUNPCK, разбор числа в цифры) для самих цифр.
 ISGUNP::MOV	#BUFOUT,R3
-	MOVB	#40,(R3)+
+	MOVB	#40,(R3)+	; зарезервировать место под знак (пробел по умолчанию)
 	TST	R5
-	BPL	1$
-	MOVB	#'-,-1(R3)
+	BPL	1$		; число неотрицательное => оставить пробел =>
+	MOVB	#'-,-1(R3)	; отрицательное => заменить на "-"
 	NEG	R5
-1$:	CALL	I1
+1$:	CALL	I1		; перевести |R5| в цифры
 	DEC	R1
 	INC	R2
 	RETURN
 ;
 IUNPCK::MOV	#BUF,R3
-I1::	MOV	R3,-(SP)
-	ADD	#5,R3
-	MOVB	#40,(R3)
-1$:	MOV	#5,R2
-	CLR	R1
+I1::	MOV	R3,-(SP)	; сохранить исходный адрес назначения
+	ADD	#5,R3		; R3 -> конец временного поля цифр (6 байт)
+	MOVB	#40,(R3)	; терминатор временного поля
+1$:	MOV	#5,R2		; начать поиск очередного разряда
+	CLR	R1		; R1 = извлечённая цифра
 2$:	ASL	R2
-	BCS	4$
+	BCS	4$		; переполнение при удвоении => остановиться =>
 	CMP	R2,R5
-	BLOS	2$
-3$:	CMP	R2,#12
-	BEQ	5$
+	BLOS	2$		; ещё не больше остатка R5 => удваивать дальше =>
+3$:	CMP	R2,#12		; дошли до самого младшего разряда (10)?
+	BEQ	5$		; да - цифра готова =>
 	CLC
-4$:	ROR	R2
-	ASL	R1
+4$:	ROR	R2		; уменьшить пробуемый разряд вдвое
+	ASL	R1		; сдвинуть накопленную цифру (двоичный поиск)
 	CMP	R2,R5
-	BHI	3$
-	SUB	R2,R5
-	INC	R1
+	BHI	3$		; разряд больше остатка => не подходит =>
+	SUB	R2,R5		; вычесть разряд из остатка
+	INC	R1		; учесть его в цифре
 	BR	3$
-5$:	ADD	#60,R5
-	MOVB	R5,-(R3)
-	MOV	R1,R5
-	BNE	1$
-	MOV	@SP,R5
-	MOV	R5,R1
-	CLR	R2
-	ADD	#6,@SP
-6$:	MOVB	(R3)+,(R5)+
+5$:	ADD	#60,R5		; остаток (сама цифра 0-9) -> код символа
+	MOVB	R5,-(R3)	; записать цифру во временное поле (с конца)
+	MOV	R1,R5		; R5 = остаток для следующего (более младшего) разряда
+	BNE	1$		; ещё есть разряды => следующий =>
+	MOV	@SP,R5		; R5 = исходный адрес назначения
+	MOV	R5,R1		; R1 = он же (результат для вызывающего)
+	CLR	R2		; R2 = счётчик скопированных цифр
+	ADD	#6,@SP		; конец временного поля - для условия цикла копирования
+6$:	MOVB	(R3)+,(R5)+	; скопировать цифру на место назначения
 	INC	R2
 	CMP	R3,@SP
-	BNE	6$
+	BNE	6$		; ещё не дошли до конца временного поля =>
 	TST	(SP)+
 	RETURN
 ;
+; GRBCOL - "сборка мусора": уплотнить разбросанный по памяти текст строк
+; программы обратно в один сплошной блок с начала TEXT (после правок/удалений
+; текст фрагментирован). Каждый проход (1$) ищет запись с наименьшим ещё не
+; обработанным адресом текста (R4 - растущий порог, выбор по возрастанию -
+; примитивная O(n^2) сортировка выборкой), переносит её текст в новую
+; уплотнённую область и обновляет адрес текста в записи (`MOV R1,@R5`).
+; Останавливается, когда очередной проход не находит записей (6$), после чего
+; TXEND/ENDCOD выставляются на новый конец текста. Точная раскладка полей
+; записи (шаг сканирования -4, а не -6, как при вставке в ASCCOD) не выяснена
+; до конца.
 GRBCOL::CLR	R4
-	MOV	#TEXT,R1
-1$:	MOV	#-1,R3
+	MOV	#TEXT,R1	; R1 -> новая уплотнённая область текста
+1$:	MOV	#-1,R3		; сентинел "не найдено"
 	MOV	FCB,R2
 	CMP	-(R2),-(R2)
-2$:	CMP	@R2,R4
-	BLOS	3$
-	MOV	@R2,R3
-	MOV	R2,R5
-3$:	CMP	-(R2),-(R2)
+2$:	CMP	@R2,R4		; поле записи > текущего порога?
+	BLOS	3$		; нет => пропустить =>
+	MOV	@R2,R3		; да - кандидат (пока наименьший из увиденных)
+	MOV	R2,R5		; запомнить адрес этой записи
+3$:	CMP	-(R2),-(R2)	; перейти к предыдущей записи
 	CMP	R2,TABTOP
-	BLO	4$
-	CMP	-(R2),R3
-	BLO	2$
-	BR	3$
+	BLO	4$		; дошли до начала таблицы => проход завершён =>
+	CMP	-(R2),R3	; поле записи меньше текущего кандидата R3?
+	BLO	2$		; да - лучший кандидат => полное сравнение =>
+	BR	3$		; нет => пропустить, к следующей записи =>
 4$:	CMP	R3,#-1
-	BEQ	6$
-	MOV	R1,@R5
-	MOV	R3,R4
-	MOVB	(R3)+,(R1)+
-5$:	MOVB	(R3)+,@R1
-	CMPB	(R1)+,#12
-	BNE	5$
-	BR	1$
-6$:	MOV	R1,TXEND
+	BEQ	6$		; в этом проходе ничего не найдено => готово =>
+	MOV	R1,@R5		; обновить адрес текста в записи на новый (уплотнённый)
+	MOV	R3,R4		; новый порог для следующего прохода
+	MOVB	(R3)+,(R1)+	; скопировать первый байт текста строки
+5$:	MOVB	(R3)+,@R1	; скопировать байт текста
+	CMPB	(R1)+,#12	; это был LF (конец строки)?
+	BNE	5$		; нет => следующий байт =>
+	BR	1$		; да => следующий проход (следующая строка) =>
+6$:	MOV	R1,TXEND	; новый конец текста
 	INC	R1
-	BIC	#1,R1
-	MOV	R1,ENDCOD
+	BIC	#1,R1		; выровнять по слову
+	MOV	R1,ENDCOD	; ВАЖНО: R1 остаётся равным ENDCOD и на выходе -
 	RETURN
 ;
 ILCALL:	TRAP	5
 ;
 RENUM:	INC	ERRS
 	MOV	R3,R0
-	CALL	GRBCOL
+	CALL	GRBCOL		; уплотнить текст перед перенумерацией
 	MOV	R0,R3
 	CLR	R2
-	MOV	#12,R0
-	MOV	#12,-(SP)
+; Разбор аргументов "[новый_начальный][,старый_начальный][,шаг]" (умолчания
+; всюду 10): @SP=новый начальный номер, R2=старый начальный, R0=шаг.
+	MOV	#12,R0		; шаг по умолчанию
+	MOV	#12,-(SP)	; новый начальный номер по умолчанию
 	CMPB	#',,@R3
 	BEQ	1$
-	CALL	ARGUM
+	CALL	ARGUM		; разобрать новый начальный номер
 	BEQ	3$
 	MOV	R5,@SP
 	TRAP	112
@@ -1134,58 +1222,71 @@ RENUM:	INC	ERRS
 	TRAP	112
 	CMPB	#',,@R3
 	BEQ	5$		;2 ARG. PRALEISTAS
-	CALL	ARGUM
+	CALL	ARGUM		; разобрать старый начальный номер
 	BEQ	3$
 	MOV	R5,R2
 	TRAP	112
 	CMPB	#',,@R3
 	BNE	3$
 5$:	INC	R3
-	TRAP	110
+	TRAP	110		; разобрать шаг
 	BR	3$
 	MOV	R5,R0
-	BEQ	ILCALL
-3$:	TRAP	106
+	BEQ	ILCALL		; шаг = 0 => ошибка =>
+3$:	TRAP	106		; конец оператора
 ;	ARGUMENTAI ISANALIZUOTI
 ;	@SP /NEW/,  R2/OLD/,  R0/INC/
-	MOV	R2,R5
+	MOV	R2,R5		;НАЙТИ ПЕРВУЮ СТРОКУ
 	TRAP	111
 	BR	8$
 	CMP	R4,TABTOP
 	BHIS	8$
-	JMP	STAR
-8$:	MOV	R4,R2
+	JMP	STAR		;ПЕРВОЙ НЕТ - КОНЕЦ
+;---В ТРЕТЬЕМ СЛОВЕ ПОМЕСТИТЬ НОВЫЕ НОМЕРА
+; 8$..10$ - пройти все строки от найденной до конца таблицы, записывая в
+; третье слово каждой записи её НОВЫЙ номер (@SP, увеличиваемый на шаг R0
+; каждый раз), не трогая ещё сам номер строки - для последующего
+; переприсвоения ссылок в тексте (ниже) по старым номерам.
+8$:	MOV	R4,R2		;ЗАПОМНИТЬ АДРЕС НАЧАЛА
 	MOV	R4,R1
 	TST	-(R1)
-9$:	MOV	@SP,-(R1)
+9$:	MOV	@SP,-(R1)	;ТРЕТЬЕ СЛОВО = НОВЫЙ НОМЕР
 	MOV	@R1,R5
 	TRAP	111
 	BR	13$
 	BR	14$
 13$:	CMP	R4,R2
-	BHI	ILCALL
+	BHI	ILCALL		;ТАКАЯ СТРОКА ЕСТЬ ВЫШЕ (уже есть такая строка выше - конфликт номеров)
 14$:	CMP	R1,TABTOP
-	BLOS	10$
-	ADD	R0,@SP
-	BCS	ILCALL
+	BLOS	10$		; дошли до конца таблицы => готово =>
+	ADD	R0,@SP		; следующий новый номер = текущий + шаг
+	BCS	ILCALL		;ПРЕВЫШЕНИЕ 65535 (переполнение)
 	CMP	-(R1),-(R1)
 	BR	9$
 10$:	TST	(SP)+
+;---ПЕРЕНУМЕРОВАТЬ ссылки В ТЕКСТЕ
+; 38$..23$ - пройти весь текст программы (R1..FCB), для каждого оператора
+; классифицировать его KODTST (как в STEP): простые ссылки на номер строки
+; (GOTO/GOSUB/RETURN/RESTORE, 12$) разбираются через TRAP 110/RENPAP, ссылки
+; внутри текста (IF/ON, 24$, через IFGAUD) - через тот же RENPAP по каждому
+; найденному номеру строки, разделённому запятыми (ON...GOTO n1,n2,...).
+; RENPAP (ниже) заменяет старый номер строки на новый (из третьего слова
+; записи, проставленного выше).
 38$:	CMP	R1,FCB
 	BEQ	30$		;TEKSTO ANALIZE BAIGTA
 	TST	(R1)+
 	MOV	@R1,R0
 	JSR	R5,KODTST
-	BR	12$
-	BR	24$
-15$:	CMP	(R1)+,(R1)+
+	BR	12$		;ПРОСТЫЕ ССЫЛКИ (GOTO И Т.П.)
+	BR	24$		;СЛОВНЫЕ ССЫЛКИ (IF/ON)
+15$:	CMP	(R1)+,(R1)+	;НЕТ ССЫЛОК - ИДТИ ДАЛЬШЕ (нет ссылок - к следующему оператору)
 	BR	38$
 12$:	INC	R0
 	MOV	R0,R3
 	TRAP	110
 	BR	15$
 	CLR	-(SP)
-	CALL	RENPAP
+	CALL	RENPAP		; заменить номер строки на новый
 	BR	23$
 	BR	23$
 24$:	CLR	-(SP)
@@ -1198,7 +1299,7 @@ RENUM:	INC	ERRS
 29$:	MOV	R3,R0
 	TRAP	110
 	BR	22$
-	CALL	RENPAP
+	CALL	RENPAP		; заменить номер строки на новый
 	BR	28$
 28$:	TRAP	112
 	CMPB	#',,@R3
@@ -1207,6 +1308,11 @@ RENUM:	INC	ERRS
 	BR	29$
 23$:	CLR	(SP)+
 	BR	15$
+;---ПЕРЕНУМЕРАЦИЯ В ТАБЛИЦЕ СВЯЗИ
+; 30$..37$ - перенести новые номера (третье слово) в поле номера строки, затем
+; пузырьковой сортировкой (33$..37$, обмен соседних 3-словных записей)
+; восстановить упорядоченность таблицы по номеру строки (шаг мог сделать её
+; немонотонной, если строки шли не по порядку).
 30$:	TST	(R2)+
 31$:	MOV	R2,R0		;SIUNCIAM NEW NR. OF LINE
 	CMP	-(R2),-(R2)
@@ -1230,7 +1336,7 @@ RENUM:	INC	ERRS
 32$:	TST	R3
 	BNE	37$
 	MOV	R4,R3
-37$:	MOV	-(R4),-(SP)
+37$:	MOV	-(R4),-(SP)	; поменять местами соседние записи (3 слова)
 	MOV	-(R4),-(SP)
 	MOV	-(R4),-(SP)
 	SUB	#6,R0
@@ -1250,7 +1356,7 @@ RENUM:	INC	ERRS
 	TST	-(R0)
 	CLR	R3
 	BR	36$
-34$:	JMP	STAR
+34$:	JMP	STAR		; готово, вернуться в монитор
 RENPAP:	MOV	R2,-(SP)
 	MOV	R1,-(SP)
 	MOV	R3,-(SP)
@@ -1259,27 +1365,31 @@ RENPAP:	MOV	R2,-(SP)
 	INC	@SP		;R3/SK. ILGIS +1/
 	TRAP	111
 	BR	3$
+; Продолжение RENPAP: R4 - найденная (TRAP 111) запись строки-цели ссылки.
+; Не найдена => ошибка (TRAP 10). Найдена => переписать старый номер в
+; тексте на новый (короче/равно - на месте, длиннее - освободив место).
+; Раскладка стекового кадра (2(SP)/4(SP)/6(SP)/10(SP)) не выяснена до конца.
 	CMP	R1,R2
 	BHI	1$
-	MOV	-2(R1),NUMBER
+	MOV	-2(R1),NUMBER	; для сообщения об ошибке - номер строки из соседней записи
 	BR	2$
-1$:	MOV	2(R1),NUMBER
-2$:	MOV	#200,LYGIS
-	TRAP	10
+1$:	MOV	2(R1),NUMBER	; для сообщения об ошибке
+2$:	MOV	#200,LYGIS	; отметить: разбор в процессе (для ошибки)
+	TRAP	10		; ошибка: строка с таким номером не существует
 	BR	7$
 3$:	CMP	R4,R2
 	BHI	7$
-	MOV	-4(R4),R5
-	CALL	IUNPCK
-	SUB	R2,@SP
-	BLT	8$
-4$:	DEC	R2
+	MOV	-4(R4),R5	; R5 = новый номер строки (третье слово записи)
+	CALL	IUNPCK		; сформировать его как десятичный текст в BUF
+	SUB	R2,@SP		; разница длины: старое поле минус длина нового числа
+	BLT	8$		; новое число длиннее => нужно освободить место =>
+4$:	DEC	R2		; ещё осталось скопировать цифр?
 	BEQ	5$		;EIL. NR. SUVESTI
-	MOVB	(R1)+,(R0)+
-	BR	4$
+	MOVB	(R1)+,(R0)+	; скопировать цифру нового номера на место старого
+	BR	4$		; следующая цифра =>
 5$:	DEC	@SP
 	BLT	6$
-	MOVB	#40,(R0)+
+	MOVB	#40,(R0)+	; забить остаток места (короче старого) пробелом
 	BR	5$
 6$:	MOV	R0,@SP
 7$:	MOV	(SP)+,R3
@@ -1288,16 +1398,16 @@ RENPAP:	MOV	R2,-(SP)
 	CLR	LYGIS
 	RTS	PC
 8$:	TST	10(SP)
-	BNE	13$
+	BNE	13$		; уже пробовали сжимать текст => другой путь =>
 	MOV	R0,R4
-9$:	CMPB	(R4)+,#12
+9$:	CMPB	(R4)+,#12	; найти конец текущей строки (LF)
 	BNE	9$
 	SUB	@2(SP),R4
 	SUB	@SP,R4
-	ADD	TXEND,R4
+	ADD	TXEND,R4	; R4 = во сколько вырастет TXEND, если сдвинуть текст
 	CMP	TABTOP,R4
 	BHIS	15$		;OK
-	SUB	TXEND,R4		;NE OK
+	SUB	TXEND,R4	;NE OK
 	MOV	R4,-(SP)
 	CALL	GRBCOL
 	MOV	(SP)+,R4
@@ -1306,85 +1416,99 @@ RENPAP:	MOV	R2,-(SP)
 	BHI	15$		;GERAI
 10$:	CMP	2(SP),4(SP)
 	BHI	11$
-	MOV	-2(R1),NUMBER
+	MOV	-2(R1),NUMBER	; для сообщения об ошибке
 	BR	12$
 11$:	MOV	2(R1),NUMBER
 12$:	MOV	#200,LYGIS
-	TRAP	7
+	TRAP	7		; ошибка: недостаточно памяти
 	ADD	#2,6(SP)
 	BR	7$
+; 13$..20$ - вставить более длинный номер строки: 13$/14$ сдвигает остаток
+; текста программы, открывая зазор в R0; 15$/16$ (места и так хватало)
+; переносит хвост строки в TXEND. Оба сходятся в 17$: копируют цифры нового
+; номера (BUF) на освободившееся место, дописывают хвост (20$), обновляют
+; TXEND. Обмен регистров между путями на стыке (17$) не выяснен до конца.
 13$:	MOV	@SP,R2
-	NEG	R2
+	NEG	R2		; R2 = недостающее количество байт
 	ADD	TXEND,R2
 	CMP	TABTOP,R2
 	BLO	10$		;NETILPS
 	MOV	TXEND,R4
-14$:	MOVB	-(R4),-(R2)
+14$:	MOVB	-(R4),-(R2)	; сдвинуть остаток текста программы, открывая зазор
 	CMP	R4,R0
 	BNE	14$
 	MOV	R0,R1
 	SUB	@SP,R1
 	BR	17$
-15$:	MOV	@2(SP),R1
+15$:	MOV	@2(SP),R1	; R1 -> начало хвоста этой строки (после старого номера)
 	MOV	TXEND,R4
 	MOV	R4,@2(SP)
-16$:	MOVB	(R1)+,(R4)+
+16$:	MOVB	(R1)+,(R4)+	; перенести хвост строки в конец текста
 	CMP	R1,R0
 	BNE	16$
-17$:	MOV	#BUF,R2
-18$:	CMPB	@R2,#40
+17$:	MOV	#BUF,R2		; R2 -> цифры нового номера (сформированы IUNPCK выше)
+18$:	CMPB	@R2,#40		; конец числа (пробел-разделитель)?
 	BEQ	19$
-	MOVB	(R2)+,(R4)+
+	MOVB	(R2)+,(R4)+	; скопировать цифру нового номера в освободившееся место
 	INC	R1
 	BR	18$
 19$:	ADD	@SP,R1
 	MOV	R4,@SP
-20$:	MOVB	@R1,(R4)+
-	CMPB	(R1)+,#12
+20$:	MOVB	@R1,(R4)+	; дописать остаток текста строки
+	CMPB	(R1)+,#12	; до LF
 	BNE	20$
-	MOV	R4,TXEND
-	INC	10(SP)
+	MOV	R4,TXEND	; новый конец текста
+	INC	10(SP)		; отметить "уже пробовали освобождать место" (см. 8$)
 	BR	7$
 ;
-KODTST::CMPB	#20,@R0	;GOSUB
+; KODTST - классифицировать опкод оператора @R0 (JSR R5,KODTST, возврат по
+; 0/1/2-пропуску R5, как в STEP/RENUM): GOSUB/GOTO/RETURN/RESTORE => 0-пропуск
+; (простые ссылки); IF/ON => 1-пропуск (словные ссылки); иначе => 2-пропуск
+; (обычный оператор).
+KODTST::CMPB	#20,@R0		;GOSUB
 	BEQ	12$
-	CMPB	#22,@R0	;GOTO
+	CMPB	#22,@R0		;GOTO
 	BEQ	12$
-	CMPB	#52,@R0	;RETURN
+	CMPB	#52,@R0		;RETURN
 	BEQ	12$
-	CMPB	#74,@R0	;RESTORE
+	CMPB	#74,@R0		;RESTORE
+	BEQ	12$		; одна из четырёх => 0-пропуск =>
+	TST	(5)+		; иначе 1-й пропуск (на случай IF/ON)
+	CMPB	#24,@R0		;IF
 	BEQ	12$
-	TST	(5)+
-	CMPB	#24,@R0	;IF
-	BEQ	12$
-	CMPB	#72,@R0	;ON
-	BEQ	12$
-	TST	(5)+
+	CMPB	#72,@R0		;ON
+	BEQ	12$		; IF/ON => итог 1-пропуск =>
+	TST	(5)+		; иначе ещё пропуск (итог 2-пропуск)
 12$:	RTS	R5
 ;
-IFGAUD::TRAP	102
-	BR	25$
+; IFGAUD - найти в тексте оператора (R3) следующий номер строки-ссылки,
+; пропуская строковые литералы (кавычки) и распознавая зарезервированные
+; слова (TRAP 113/RWREN, видимо ключевые слова типа THEN/ELSE). Возврат по
+; 0/1-пропуску R2 (JSR R2,IFGAUD): 0-пропуск - конец/останов, 1-пропуск -
+; продолжить сканирование со следующего символа.
+IFGAUD::TRAP	102		; классифицировать символ @R3 (буква/цифра/иначе)
+	BR	25$		; цифра =>
 	BR	21$		;RAIDE
-	BR	20$
-25$:	CMPB	@R3,#47
-	BEQ	23$
-	CMPB	@R3,#42
-	BNE	20$
-26$:	INC	R3
+	BR	20$		; иначе (пропустить символ) =>
+25$:	CMPB	@R3,#47		; символ - "'" (комментарий)?
+	BEQ	23$		; да => конец сканирования =>
+	CMPB	@R3,#42		; символ - kавычка (строковый литерал)?
+	BNE	20$		; нет => пропустить символ =>
+26$:	INC	R3		; да => дойти до закрывающей кавычки или LF
 	CMPB	@R3,#12
-	BEQ	23$
+	BEQ	23$		; строка не закрыта (конец текста) => остановиться =>
 	CMPB	@R3,#42
 	BNE	26$
-	BR	20$
-21$:	TRAP	113
+	BR	20$		; кавычка закрыта => пропустить строку, продолжить =>
+21$:	TRAP	113		; слово - зарезервированное (таблица RWREN)?
 	.WORD	RWREN
 	.BYTE	2
 	.BYTE	16
-	BR	20$
-	TST	R5
-	BEQ	23$
-	TST	(2)+
-20$:	TST	(2)+
+	BR	20$		; нет => пропустить слово, продолжить =>
+	TST	R5		; да - зарезервированное: есть ли что искать дальше?
+	BEQ	23$		; нет => остановиться =>
+	TST	(2)+		; есть => 1-й пропуск (продолжить)
+20$:	TST	(2)+		; пропустить символ и продолжить (1-пропуск)
 23$:	RTS	R2
 ;
 ;MAXFL:	CMPB	(R3)+,#'=

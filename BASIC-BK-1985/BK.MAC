@@ -19,8 +19,8 @@
 BK0010=0
 EL60=1
 NC80=2
-SM4=3	;RAFOS
-MDS=4	;MDS RAFOS
+SM4=3				;RAFOS
+MDS=4				;MDS RAFOS
 RAM=10000
 ROM=120000
 MVIDEO=40000
@@ -35,21 +35,21 @@ KONTYP=NORM
 ; ****СИСТЕМНЫЕ КОНСТАНТЫ****
 ; ===========================
 ;
-BREAKW==4	;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ПО КЛАВИШЕ "СТОП"
+BREAKW==4			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ПО КЛАВИШЕ "СТОП"
 ILCODW=10
-TRAPW=34	;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ПО ИНСТРУКЦИИ TRAP
-TIMER==100	;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ТАЙМЕРА
-$DRWX=176	;КООРДИНАТА X
-$DRWY=200	;КООРДИНАТА Y
-TSTKEY=105	;АДРЕС ПРИЗНАКА НАЖАТИЯ НА КЛАВИШУ
-MSTART==264	;СТАРТОВЫЙ АДРЕС МАССИВА
-MLEN=266	;ДЛИНА МАССИВА
-MAG==320	;АДРЕС БЛОКА ПАРАМЕТРОВ МАГНИТОФОНА
-IRPSW=360	;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ИРПС
-IRPSRG=176560	;АДРЕС РЕГИСТРА ИРПС
-AUSROM=160000	;АДРЕС ПЕРЕХОДА НА ПОЛЬЗОВАТЕЛЬСКОЕ БИС ПЗУ
-ARPORT=177714	;АДРЕС РЕГИСТРА ПРОГРАММИРУЕМОГО ПОРТА
-ASPORT=177716	;adres registra sistemnogo porta
+TRAPW=34			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ПО ИНСТРУКЦИИ TRAP
+TIMER==100			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ТАЙМЕРА
+$DRWX=176			;КООРДИНАТА X
+$DRWY=200			;КООРДИНАТА Y
+TSTKEY=105			;АДРЕС ПРИЗНАКА НАЖАТИЯ НА КЛАВИШУ
+MSTART==264			;СТАРТОВЫЙ АДРЕС МАССИВА
+MLEN=266			;ДЛИНА МАССИВА
+MAG==320			;АДРЕС БЛОКА ПАРАМЕТРОВ МАГНИТОФОНА
+IRPSW=360			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ИРПС
+IRPSRG=176560			;АДРЕС РЕГИСТРА ИРПС
+AUSROM=160000			;АДРЕС ПЕРЕХОДА НА ПОЛЬЗОВАТЕЛЬСКОЕ БИС ПЗУ
+ARPORT=177714			;АДРЕС РЕГИСТРА ПРОГРАММИРУЕМОГО ПОРТА
+ASPORT=177716			;adres registra sistemnogo porta
 ;
 ; ============================
 ; ****СИСТЕМНЫЕ ПЕРЕМЕННЫЕ****
@@ -59,65 +59,66 @@ ASPORT=177716	;adres registra sistemnogo porta
 	.=2000
 ;
 STACK::
-LYGIS::	.BLKW	1	;РЕЖИМ РАБОТЫ СИСТЕМЫ
-TXEND::	.BLKW	1	;МЕТКА КОНЦА ТЕКСТА И НАЧАЛА ОБ'ЕКТНОГО КОДА
-STRREG::.BLKW	1	;МЕТКА НАЧАЛА ОБЛАСТИ СТРОК
-STRSIZ::.BLKW	1	;УКАЗАТЕЛЬ ДЛИНЫ ОБЛАСТИ СТРОК
-FREBEG::.BLKW	1	;МЕТКА СВОБОДНОЙ ЧАСТИ ОБЛАСТИ СТРОК
-FRELEN::.BLKW	1	;ТЕКУЩАЯ ДЛИНА СВОБОДНОЙ ЧАСТИ ОБЛАСТИ СТРОК
-ENDCOD::.BLKW	1	;МЕТКА НАЧАЛА СВОБОДНОЙ ОБЛАСТИ
-			;И КОНЦА ОБ'ЕКТНОГО КОДА
-CIKL::	.BLKW	1	;metka na~ala steka ciklow
-LIMIT::	.BLKW	1	;ukazatelx wer{iny steka podprogramm
-LENT::	.BLKW	1	;МЕТКА НАЧАЛА ТАБЛИЦЫ ИМЕН
-TABTOP::.BLKW	1	;МЕТКА КОНЦА ТАБЛИЦ СВЯЗИ И ИМЕН
-FCB::	.BLKW	1	;МЕТКА НАЧАЛА ОБЛАСТИ ФАЙЛОВ И ТАБЛИЦЫ СВЯЗИ
-HIMEM::	.BLKW	1	;УКАЗАТЕЛЬ ВЕРХНЕГО АДРЕСА, ДОСТУПНОГО БЕЙСИКУ
-ERRS::	.BLKW	1	;ПРИЗНАК ЗАПРЕТА ВЫПОЛНЕНИЯ ПРОГРАММЫ
-TYPE::	.BLKW	1	;ТИП КОМПИЛИРУЕМОГО ВЫРАЖЕНИЯ
-DATBEG::.BLKW	1	;ukazatelx na~ala bufera DATA
-DATPTR::.BLKW	1	;teku}ij ukazatelx bufera DATA
-DATINP::.BLKW	1	;flag READ/INPUT
-NUMBER::.BLKW	1	;НОМЕР КОМПИЛИРУЕМОЙ СТРОКИ
-ADRHLT::.BLKW	1	;АДРЕС ОСТАНОВА ПРОГРАММЫ
-TRFLAG::.BLKW	1	;ФЛАГ РЕЖИМА ТРАССИРОВКИ
-AUTOON::.BLKW	1	;ФЛАГ РЕЖИМА AUTO
-AUINC::	.BLKW	1	;AUTO ПРИРАЩЕНИЕ
-CURLIN::.BLKW	1	;УКАЗАТЕЛЬ ТЕКУЩЕЙ СТРОКИ
-III::	.BLKW	4	;РАБОЧИЕ ЯЧЕЙКИ ФУНКЦИИ RND
-RNDSAV::.BLKW	4	;ТЕКУЩЕЕ ЗНАЧЕНИЕ RND
+LYGIS::	.BLKW	1		;РЕЖИМ РАБОТЫ СИСТЕМЫ
+TXEND::	.BLKW	1		;МЕТКА КОНЦА ТЕКСТА И НАЧАЛА ОБ'ЕКТНОГО КОДА
+STRREG::.BLKW	1		;МЕТКА НАЧАЛА ОБЛАСТИ СТРОК
+STRSIZ::.BLKW	1		;УКАЗАТЕЛЬ ДЛИНЫ ОБЛАСТИ СТРОК
+FREBEG::.BLKW	1		;МЕТКА СВОБОДНОЙ ЧАСТИ ОБЛАСТИ СТРОК
+FRELEN::.BLKW	1		;ТЕКУЩАЯ ДЛИНА СВОБОДНОЙ ЧАСТИ ОБЛАСТИ СТРОК
+ENDCOD::.BLKW	1		;МЕТКА НАЧАЛА СВОБОДНОЙ ОБЛАСТИ
+				;И КОНЦА ОБ'ЕКТНОГО КОДА
+CIKL::	.BLKW	1		;metka na~ala steka ciklow
+LIMIT::	.BLKW	1		;ukazatelx wer{iny steka podprogramm
+LENT::	.BLKW	1		;МЕТКА НАЧАЛА ТАБЛИЦЫ ИМЕН
+TABTOP::.BLKW	1		;МЕТКА КОНЦА ТАБЛИЦ СВЯЗИ И ИМЕН
+FCB::	.BLKW	1		;МЕТКА НАЧАЛА ОБЛАСТИ ФАЙЛОВ И ТАБЛИЦЫ СВЯЗИ
+HIMEM::	.BLKW	1		;УКАЗАТЕЛЬ ВЕРХНЕГО АДРЕСА, ДОСТУПНОГО БЕЙСИКУ
+ERRS::	.BLKW	1		;ПРИЗНАК ЗАПРЕТА ВЫПОЛНЕНИЯ ПРОГРАММЫ
+TYPE::	.BLKW	1		;ТИП КОМПИЛИРУЕМОГО ВЫРАЖЕНИЯ
+DATBEG::.BLKW	1		;ukazatelx na~ala bufera DATA
+DATPTR::.BLKW	1		;teku}ij ukazatelx bufera DATA
+DATINP::.BLKW	1		;flag READ/INPUT
+NUMBER::.BLKW	1		;НОМЕР КОМПИЛИРУЕМОЙ СТРОКИ
+ADRHLT::.BLKW	1		;АДРЕС ОСТАНОВА ПРОГРАММЫ
+TRFLAG::.BLKW	1		;ФЛАГ РЕЖИМА ТРАССИРОВКИ
+AUTOON::.BLKW	1		;ФЛАГ РЕЖИМА AUTO
+AUINC::	.BLKW	1		;AUTO ПРИРАЩЕНИЕ
+CURLIN::.BLKW	1		;УКАЗАТЕЛЬ ТЕКУЩЕЙ СТРОКИ
+III::	.BLKW	4		;РАБОЧИЕ ЯЧЕЙКИ ФУНКЦИИ RND
+RNDSAV::.BLKW	4		;ТЕКУЩЕЕ ЗНАЧЕНИЕ RND
 ;MAXFIL::.BLKW	1	;maksimalxnoe koli~estwo fajlow dannyh
-USRTAB::.BLKW	10.	;ТАБЛИЦА АДРЕССОВ USR
+USRTAB::.BLKW	10.		;ТАБЛИЦА АДРЕССОВ USR
 ;APRL::	.BLKW	15	;tablica neqwnogo opredeleniq tipow
-PNTSAV::.BLKW	1	;rabo~aq q~ejka {aga
-PFACT::	.BLKW	2	;ukazatelx bloka parametrow dlq FN
-TMP::	.BLKW	1	;ukazatelx wremennyh deskriptorow
-SAVJMP::.BLKW	1	;adres koda wypolnqemoj programmy
-LPTPOS::.BLKB	1	;s~et~ik golowki printera
+PNTSAV::.BLKW	1		;rabo~aq q~ejka {aga
+PFACT::	.BLKW	2		;ukazatelx bloka parametrow dlq FN
+TMP::	.BLKW	1		;ukazatelx wremennyh deskriptorow
+SAVJMP::.BLKW	1		;adres koda wypolnqemoj programmy
+LPTPOS::.BLKB	1		;s~et~ik golowki printera
 	.EVEN
 ;
     .IF	EQ,MASINA-BK0010
-FNKSTR::.BLKB	170.	;БУФЕР ТЕКСТОВ ФУНКЦИОНАЛЬНЫХ КЛАВИШ
-$SCRT:	.BLKW	1	;rabo~aq peremennaq DRAW
+FNKSTR::.BLKB	170.		;БУФЕР ТЕКСТОВ ФУНКЦИОНАЛЬНЫХ КЛАВИШ
+$SCRT:	.BLKW	1		;rabo~aq peremennaq DRAW
     .IF	EQ,KONTYP-KLAS
-COPPNT:	.BLKW	1	;ukazatelx ozu |krana dlq COPY
-EKRHUK:	.BLKW	1	;adres dopoln. podpr.
+COPPNT:	.BLKW	1		;ukazatelx ozu |krana dlq COPY
+EKRHUK:	.BLKW	1		;adres dopoln. podpr.
 	.ENDC
 ;
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
     .IFF
-TABX::	.BLKB	1	;НО. ПОЗИЦИИ КУРСОРА
-TABY::	.BLKB	1	;НО. СТРОКИ КУРСОРА
-SIIKP::	.BLKB	1	;ПРИЗНАК ЗАПИСИ КОДА ИЗ КЛАВИАТУРЫ
-RLPOZ::	.BLKB	1	;ПРИЗНАК РУС. ЛАТ.
-SAUG::	.BLKW	4	;ХРАНЕНИЕ ВЕКТОРА ПРЕРЫВАНИЯ КЛАВИАТУРЫ
-			;И КОМАНД ПЕРЕЗАПУСКА СИСТЕМЫ
+TABX::	.BLKB	1		;НО. ПОЗИЦИИ КУРСОРА
+TABY::	.BLKB	1		;НО. СТРОКИ КУРСОРА
+SIIKP::	.BLKB	1		;ПРИЗНАК ЗАПИСИ КОДА ИЗ КЛАВИАТУРЫ
+RLPOZ::	.BLKB	1		;ПРИЗНАК РУС. ЛАТ.
+SAUG::	.BLKW	4		;ХРАНЕНИЕ ВЕКТОРА ПРЕРЫВАНИЯ КЛАВИАТУРЫ
+				;И КОМАНД ПЕРЕЗАПУСКА СИСТЕМЫ
     .IFTF
-WRITE::	.BLKW	1	;adres drajwera ustrojstwa wne{nej pamqti
-IODEV:: .BLKW	1	;НОМЕР ТЕКУЩЕГО ФАЙЛА
-INK::	.BLKW	1	;БУФЕР INKEY
-BUF::	.BLKB	400	;БУФЕР ВВОДА
-BUFOUT::.BLKB	30	;БУФЕР ВЫВОДА
-TEXT::	.BLKW	1	;ОБЛАСТЬ ПРОГРАММЫ ПОЛЗОВАТЕЛЯ
+WRITE::	.BLKW	1		;adres drajwera ustrojstwa wne{nej pamqti
+IODEV:: .BLKW	1		;НОМЕР ТЕКУЩЕГО ФАЙЛА
+INK::	.BLKW	1		;БУФЕР INKEY
+BUF::	.BLKB	400		;БУФЕР ВВОДА
+BUFOUT::.BLKB	30		;БУФЕР ВЫВОДА
+TEXT::	.BLKW	1		;ОБЛАСТЬ ПРОГРАММЫ ПОЛЗОВАТЕЛЯ
 ;
 ; ====================
 ; ****ПУСК СИСТЕМЫ****
@@ -128,24 +129,28 @@ TEXT::	.BLKW	1	;ОБЛАСТЬ ПРОГРАММЫ ПОЛЗОВАТЕЛЯ
 	.GLOBL	LNUM
 
 	.=MEMTYP
+; START - точка входа ПЗУ БК-0010. Структура файла: BK.MAC содержит системные
+; константы и переменные, пуск системы, ввод-вывод через монитор ПЗУ (EMT),
+; редактор строки, отладочный STEP, сервис клавиш и обмен через ИРПС.
 START::
     .IFT
     .IF	EQ,MEMTYP-ROM
 	MOV	#100000,R1	;CHECK SUM
-	MOV	#3,R3
-4$:	MOV	#10000,R2
+	MOV	#3,R3		; 3 блока
+4$:	MOV	#10000,R2	; 4096 слов в блоке
 	CLR	R0
-3$:	ADD	(R1)+,R0
+3$:	ADD	(R1)+,R0	; сумма с циклическим переносом
 	ADC	R0
 	SOB	R2,3$
-	CMP	R0,#177777
-	BEQ	2$
-	RETURN
+	CMP	R0,#177777	; ожидается 177777
+	BEQ	2$		; верна =>
+	RETURN			; нет - запуск не выполняется
 2$:	SOB	R3,4$
 	.ENDC
 ;
     .IFTF
-	MOV	#STACK,SP
+	MOV	#STACK,SP	; стек интерпретатора
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
     .IFF
 	MOV	AVPK,SAUG
 	MOV	AVPK+2,SAUG+2
@@ -153,26 +158,26 @@ START::
 	MOV	2,SAUG+6
     .IFTF
     .IF	EQ,MEMTYP-ROM
-	MOV	#MVIDEO,HIMEM
+	MOV	#MVIDEO,HIMEM	; верх памяти Бейсика (ПЗУ): под экран, MVIDEO
     .IFF
-	MOV	#MEMTYP,HIMEM
+	MOV	#MEMTYP,HIMEM	; верх памяти Бейсика (ОЗУ): MEMTYP
 	.ENDC
-	CLR	TRFLAG
-	CLRB	LPTPOS
-	MOV	#200.,STRSIZ
-	MOV	#AUINC,R0
-	MOV	#12,(0)+
-	MOV	#12,(0)+
+	CLR	TRFLAG		; трассировка выключена
+	CLRB	LPTPOS		; позиция головки принтера = 0
+	MOV	#200.,STRSIZ	; размер области строк по умолчанию - 200 байт (десятичное)
+	MOV	#AUINC,R0	; R0 -> AUINC (за ним CURLIN, III, RNDSAV)
+	MOV	#12,(0)+	; AUINC = 10 (шаг AUTO по умолчанию)
+	MOV	#12,(0)+	;CURLIN (= 10 по умолчанию)
 	MOV	R0,R1
-	MOV	#40101,(0)+
+	MOV	#40101,(0)+	; начальное значение генератора RND (4 слова)
 	MOV	#44122,(0)+
 	MOV	#37502,(0)+
 	MOV	#52125,(0)+
-	.REPT	4
+	.REPT	4		; копия начального значения - в следующие 4 слова (RNDSAV)
 	MOV	(1)+,(0)+
 	.ENDR
 ;	MOV	#1,(R0)+	;MAXFIL <- 1
-	MOV	#10.,R1
+	MOV	#10.,R1		; 10 функций USR
 1$:	MOV	#NOUSR,(0)+	;НЕОПРЕДЕЛЕННЫЕ ФУНКЦИИ USR
 	SOB	R1,1$
     .IFT
@@ -185,53 +190,60 @@ START::
 ;	SOB	R1,5$
 ;
 ;	CLR	(R0)+		;STOPAR
-	CLR	PNTSAV
+	CLR	PNTSAV		; нет точек останова STEP
 	CALL	MIDM		;ИНИЦИАЛИЗАЦИЯ УСТРОЙСТВ
-	CALL	CLRTXT
+	CALL	CLRTXT		; очистить программу, вывести начальное сообщение
     .IFT
 	CALL	KINIT		;ИНИЦИАЛИЗАЦИЯ КЛЮЧЕЙ
     .IFTF
-	BR	SETW
-SUM1::	.WORD	0
+	BR	SETW		; => установка векторов и вход в монитор
+SUM1::	.WORD	0		; SUM1 - балансирующее слово контрольной суммы ПЗУ
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
     .IFF
+; INIT - обработчик вектора 2 (нечётный адрес/ошибка шины) - аварийное
+; восстановление: сбросить стек, снять точки останова (SEPAP), заново
+; инициализировать устройства и вернуться к установке векторов.
 INIT:	MOV	#STACK,SP
-	JSR	R2,SEPAP
-	CALL	MIDM
+	JSR	R2,SEPAP	; снять точки останова STEP, сбросить стек интерпретатора
+	CALL	MIDM		; переинициализировать устройства
 	BR	SETW
     .IFTF
 ;
+; CTRLC - обработчик CTRL/C вне выполнения программы (LYGIS>=0): просто
+; прервать текущий ввод и вернуться в монитор. Во время выполнения (LYGIS<0)
+; - полноценная обработка через BREAK.
 CTRLC:	TST	LYGIS
-	BMI	BREAK
+	BMI	BREAK		; программа выполняется => полная обработка =>
 	MOV	#STACK,SP
 	MOV	#12,R0
-	CALL	ISV
+	CALL	ISV		; перевод строки
 	JMP	MONIT+4
 ;
 ;
-WSTOP::	.BYTE	12,363,364,357,360,12
+WSTOP::	.BYTE	12,363,364,357,360,12	; WSTOP: LF + текст "СТОП" (КОИ-8) + LF
 ;
 BREAK::	MOV	#IRPS2-10,@#BREAKW
 	CLR	@#177660
 	CLR	IODEV
     .IFT
-	EMT	34
-	BIT	#400,R0
-	BEQ	1$
+	EMT	34		; получить слово состояния дисплея в R0
+	BIT	#400,R0		; бит 8 = режим текстовой графики "ГРАФ"
+	BEQ	1$		; не в графике => пропустить выход из неё =>
 	MOV	#225,R0
-	EMT	16
+	EMT	16		; выйти из режима "ГРАФ"
 	CALL	ISVSS
     .IFTF
 1$:	MOV	#WSTOP,R1
 	MOV	#5,R2
-	CALL	ISVEIL
+	CALL	ISVEIL		; вывести "СТОП"
 	TST	LYGIS
-	BGE	2$
-	TST	SAVJMP
+	BGE	2$		; программа не выполнялась => просто перевод строки =>
+	TST	SAVJMP		; ждал ли CONT после HALT (SAVJMP)?
 	BEQ	3$
-	MOV	SAVJMP,R4
+	MOV	SAVJMP,R4	; да - использовать эту точку продолжения
 	CLR	SAVJMP
 3$:	CMP	R4,STRREG
-	BHI	2$
+	BHI	2$		; R4 вне кода программы => не выводить номер строки =>
 	CMP	@SP,#NEXDBL-20
  	BEQ	10$
 	CMP	@SP,#NEXJMP+22
@@ -243,23 +255,24 @@ BREAK::	MOV	#IRPS2-10,@#BREAKW
 	CMP	@SP,#DFNRET-2
 	BHI	11$
 	BEQ	10$
-	TST	(4)+
-10$:	TST	(4)+
-11$:	CALL	LNUM
-	MOV	-(4),ADRHLT
+	TST	(4)+		; поправить R4 (прервано на выборке инструкции)
+10$:	TST	(4)+		; поправить R4 ещё на слово
+11$:	CALL	LNUM		; вывести номер прерванной строки
+	MOV	-(4),ADRHLT	; запомнить адрес останова для CONT
 	BR	4$
 2$:	MOV	#12,R0
-	CALL	ISV
-4$:	JSR	R2,SEPAP
+	CALL	ISV		; перевод строки
+4$:	JSR	R2,SEPAP	; снять точки останова STEP, сбросить стек интерпретатора
    	CLR	LYGIS
-SETW:	CLR	@#TIMER+2		;УСТАНОВКА ВЕКТОРОВ ПРЕРЫВАНИЙ
+SETW:	CLR	@#TIMER+2	;УСТАНОВКА ВЕКТОРОВ ПРЕРЫВАНИЙ
 	MOV	#IRPS2-10,@#TIMER	;TAIMERIS DARBUI SU PRINTERIU
-	MOV	#IRPS2-10,@#BREAKW
+	MOV	#IRPS2-10,@#BREAKW	; клавиша СТОП,
 	CLR	@#BREAKW+2
-	MOV	#TRAP,TRAPW
+	MOV	#TRAP,TRAPW	; TRAP,
 	CLR	TRAPW+2
-	MOV	#IRPS2-10,@#ILCODW
+	MOV	#IRPS2-10,@#ILCODW	; неверная инструкция
 	CLR	@#ILCODW+2
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
     .IFF
 	MOV	#137,@#0
 	MOV	#INIT,@#2
@@ -273,14 +286,15 @@ SETW:	CLR	@#TIMER+2		;УСТАНОВКА ВЕКТОРОВ ПРЕРЫВАНИЙ
 	CLR	@#IRPSW+2
 	BIS	#100,@#IRPSRG
 	CLR	EKRHUK
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
     .IFF
 	CLR	@#IRPSRG
     .ENDC
     .IFTF
-	MOV	#SYSERR,@#ILCODW
-SYS1:	MOV	#BREAK,@#BREAKW
-	JMP	STAR 		;ПЕРЕХОД НА БЭЙСИК-МОНИТОР
-SYSERR:	TRAP	51.
+	MOV	#SYSERR,@#ILCODW	; неверная инструкция (ILCODW) - ошибка 51
+SYS1:	MOV	#BREAK,@#BREAKW	; клавиша СТОП - обработчик BREAK
+	JMP	STAR		;ПЕРЕХОД НА БЭЙСИК-МОНИТОР
+SYSERR:	TRAP	51.		; SYSERR: ошибка 51 - системная ошибка
 ;
 ;
 ; =========================
@@ -291,79 +305,80 @@ SYSERR:	TRAP	51.
 ; ####КОНСТАНТЫ БЛОКА ВВОДА-ВЫВОДА####
 ; ------------------------------------
 ;
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
 	.IF	EQ,MASINA-MDS
-TIMER=177546		;АДРЕС CSR ТАЙМЕРА
+TIMER=177546			;АДРЕС CSR ТАЙМЕРА
 	.ENDC
-ARSK=177560		;АДРЕС РСК
-ARDK=177562		;АДРЕС РДК
-ARSTV=177564		;АДРЕС РСТВ
-ARDTV=177566		;АДРЕС РДТВ
-AVPK=60			;АДРЕС ВЕКТОРА ПРЕР. КЛ.
+ARSK=177560			;АДРЕС РСК
+ARDK=177562			;АДРЕС РДК
+ARSTV=177564			;АДРЕС РСТВ
+ARDTV=177566			;АДРЕС РДТВ
+AVPK=60				;АДРЕС ВЕКТОРА ПРЕР. КЛ.
 ;
 	.IFT
-ARDK=177662		;АДРЕС РДК БК0010
+ARDK=177662			;АДРЕС РДК БК0010
 ;
 ; ---------------------------------------
 ; ## ИНИЦИАЛИЗАЦИЯ БЛОКА ВВОДА-ВЫВОДА ###
 ; ---------------------------------------
 ;
-MIDM:
+MIDM:				; MIDM: инициализация монитора БК
 	.IF	EQ,MEMTYP-ROM
-	RESET
-	EMT	14
+	RESET			; сброс устройств
+	EMT	14		; EMT 14 - инициализация экрана
 	.IFF
 	CLR	@#260
 	EMT	34
 	ASR	R0
 	BCS	1$
 	.ENDC
- 	MOV	#233,R0
-	EMT	16
+ 	MOV	#233,R0		; код 233 драйверу экрана (режим экрана)
+	EMT	16		; вывод кода
 1$:	MOV	#236,R0
-	EMT	16
-	MOV	#BUF,R0
+	EMT	16		; код 236 драйверу экрана
+	MOV	#BUF,R0		; BUF..TEXT заполнить словами LF-LF (#5012)
 2$:	MOV	#5012,(0)+
 	CMP	R0,#TEXT
 	BLO	2$
-	CLR	IODEV
+	CLR	IODEV		; IODEV = 0 - вывод на экран
 	RETURN
 ;
-KINIT:	MOV	#FNKSTR,R1
-	MOV	#KEYTXT,R2
-	CLR	R3
+KINIT:	MOV	#FNKSTR,R1	; KINIT: R1 -> буфер текстов функциональных клавиш FNKSTR
+	MOV	#KEYTXT,R2	; R2 -> тексты по умолчанию KEYTXT
+	CLR	R3		; R3 - номер клавиши
 2$:	INC	R3
 	MOV	R1,R4
 	MOV	R3,R0
-	EMT	12
-	MOVB	@R2,R5
+	EMT	12		; EMT 12 - привязка строки клавиши (по смыслу вызова)
+	MOVB	@R2,R5		; длина текста
 	INC	R5
 1$:	MOVB	(R2)+,(R4)+
 	SOB	R5,1$
-	ADD	#17.,R1
-	CMP	R3,#10.
+	ADD	#17.,R1		; 17. байт на клавишу
+	CMP	R3,#10.		; 10. клавиш
 	BLO	2$
-	CALL	ISVSS
+	CALL	ISVSS		; показать строку клавиш
 	RETURN
-KEYTXT:	.ASCII	<6>/COLOR /<5>/AUTO /<5>/GOTO /<5>/LIST /<4>/RUN/<12>
+KEYTXT:	.ASCII	<6>/COLOR /<5>/AUTO /<5>/GOTO /<5>/LIST /<4>/RUN/<12>	; KEYTXT: тексты клавиш F1..F10: длина, текст
 	.ASCII	<12>/COLOR 1,0/<12><6>/CLOAD"/<5>/CONT/<12><2>/./<12>
 	.ASCII	<5><14>/RUN/<12>
 	.EVEN
 ;
-ISVSS::	MOV	#236,R0
-	EMT	16
-	MOV	#FNKSTR,R3
+ISVSS::	MOV	#236,R0		; ISVSS: вывести строку функциональных клавиш
+	EMT	16		; код 236 драйверу
+	MOV	#FNKSTR,R3	; R3 -> FNKSTR
 	CLR	R1
 4$:	MOV	R3,R5
 	MOVB	(R5)+,R2
-	MOV	#' ,R0
+	MOV	#' ,R0		; пробел по умолчанию
 3$:	DEC	R2
 	BMI	5$
 	CMPB	#' ,(R5)+
 	BGE	3$
 	MOVB	-(R5),R0
-5$:	EMT	22
-	ADD	#17.,R3
+5$:	EMT	22		; EMT 22 - вывод символа в позицию строки клавиш
+	ADD	#17.,R3		; к следующей клавише
 	INC	R1
 	CMP	R1,#10.
 	BLT	4$
@@ -373,6 +388,7 @@ ISVSS::	MOV	#236,R0
 	EMT	22
 	RETURN
 ;
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
 MIDM:
 	.IF	EQ,MASINA-MDS
@@ -392,11 +408,17 @@ MIDM:
 ; -------------------
 ;
 	.IFT
+; IVEIL - ввод строки с клавиатуры в BUF: экранный редактор строки БК. Символы
+; приходят из монитора ПЗУ (EMT 6) и сразу выводятся на экран (EMT 16); коды
+; управления (стрелки, вставка/удаление символа, очистка, возврат строки, ГРАФ)
+; обрабатываются здесь. Обработчики: 4$ очистка, 6$ аннулирование символа, 7$ и
+; 2$ курсор вправо/влево, 26$ смыкание строки (удалить символ), 27$ размыкание
+; (вставить пробел), 3$ конец ввода, 21$ возврат строки, 51$ табуляция.
 IVEIL::	MOV	R0,-(SP)	;СОХРАНЕНИЕ РЕГИСТРОВ
 	MOV	R2,-(SP)
 	MOV	R3,-(SP)
 	MOV	R5,-(SP)
-SBRALL:	EMT	26
+SBRALL:	EMT	26		; EMT 26 - текущие координаты курсора в R1,R2
 	MOV	R1,-(SP)
 SBROS:	MOV	#BUF,R1		;АДРЕС СТРОКИ
 	MOV	R1,R3
@@ -404,35 +426,35 @@ SBROS:	MOV	#BUF,R1		;АДРЕС СТРОКИ
 	MOV	R2,-(SP)
 PIJ::	EMT	6		;ЧТЕНИЕ ОЧЕРЕДНОГО СИМВОЛА
 	MOVB	R0,R5
-	BGE	5$
-	CMPB	R0,#211
+	BGE	5$		; код < 200 (обычные и управляющие)  =>
+	CMPB	R0,#211		; 211?
 	BEQ	55$
     .IF	EQ,MEMTYP-RAM
 	CMPB	R0,#214
 	BEQ	PIJ
     .ENDC
-	CMPB	R0,#240
+	CMPB	R0,#240		; 240 и выше - буквы (КОИ-8) =>
 	BGE	14$
-	CMPB	R0,#233
+	CMPB	R0,#233		; 233..237 - вывести как есть =>
 	BGE	55$
-	CMPB	R0,#231
+	CMPB	R0,#231		; 231 - смыкание строки (удалить символ) =>
 	BNE	153$
 	JMP	26$
 153$:	CMPB	R0,#225
-	BGT	PIJ
-	BNE	12$
-13$:	EMT	16
+	BGT	PIJ		; код > 225 - игнорировать
+	BNE	12$		; 225 (ГРАФ) =>
+13$:	EMT	16		; ГРАФ: выводить коды драйверу экрана
 	EMT	6
 	CMPB	R0,#225
-	BNE	13$
+	BNE	13$		; пока не придёт ещё 225
 	EMT	16
 	CMP	(SP)+,(SP)+
-	CALL	ISVSS
+	CALL	ISVSS		; показать строку клавиш и начать ввод заново
 	BR	SBRALL
-12$:	CMPB	R0,#220
+12$:	CMPB	R0,#220		; 220 - клавиша STEP
 	BNE	55$
-	CALL	STEP
-55$:	EMT	16
+	CALL	STEP		; выполнить шаг отладки
+55$:	EMT	16		; вывод кода на экран
 	CMPB	R5,#236
 	BNE	PIJ
 	CALL	ISVSS
@@ -452,24 +474,24 @@ PIJ::	EMT	6		;ЧТЕНИЕ ОЧЕРЕДНОГО СИМВОЛА
 	DEC	R2
 	BNE	PIJ
 47$:	TRAP	25.		;СЛИШКОМ ДЛИННАЯ СТРОКА
-5$:	CMPB	R0,#177
+5$:	CMPB	R0,#177		; 177 (ЗБ)?
 	BNE	155$
 	MOVB	#26,R0
 	BR	26$
-155$:	CMPB	R0,#3
+155$:	CMPB	R0,#3		; 3 (СТОП/Ctrl-C) =>
 	BNE	20$
 	JMP	CTRLC
-20$:	CMPB	R0,#40
+20$:	CMPB	R0,#40		; печатные символы (>= 40) =>
 	BGE	14$
-	CMPB	R0,#7
+	CMPB	R0,#7		; 7 (звонок) - только вывод
 	BEQ	55$
-	CMPB	R0,#10
+	CMPB	R0,#10		; 10 (влево) =>
 	BEQ	2$
-	CMPB	R0,#12
+	CMPB	R0,#12		; 12 (LF) - конец строки =>
 	BEQ	3$
-	CMPB	R0,#14
+	CMPB	R0,#14		; 14 (очистка экрана) =>
 	BEQ	4$
-	SUB	#23,R5
+	SUB	#23,R5		; прочие управляющие: таблица переходов по коду 23..37
 	BLT	PIJ
 	ASL	R5
 	ADD	R5,PC
@@ -532,12 +554,12 @@ PIJ::	EMT	6		;ЧТЕНИЕ ОЧЕРЕДНОГО СИМВОЛА
 	BIT	#7,R5
 	BNE	51$
 	JMP	PIJ
-21$:	CMP	R3,#BUF
+21$:	CMP	R3,#BUF		; возврат строки (23)
 	BNE	49$
 	TST	LYGIS
 	BMI	49$
 	JMP	BC
-49$:	MOVB	#10,R0			;wozwrat stroki
+49$:	MOVB	#10,R0		;wozwrat stroki
 41$:	CMP	#BUF,R1
 	BEQ	48$
 	EMT	16
@@ -546,7 +568,7 @@ PIJ::	EMT	6		;ЧТЕНИЕ ОЧЕРЕДНОГО СИМВОЛА
 26$:	CMP	R1,R3		;СМЫКАНИЕ СТРОКИ
 	BEQ	48$
 	BR	42$
-3$:	CMP	R3,R1			;konec ~teniq stroki
+3$:	CMP	R3,R1		;konec ~teniq stroki
 	BEQ	53$
 	CMP	-(SP),-(SP)
 	CALL	PELING
@@ -694,7 +716,7 @@ PIJ::	EMT	6		;ЧТЕНИЕ ОЧЕРЕДНОГО СИМВОЛА
 	BGT	33$
 	TRAP	31
 ;
-PELING:	MOV	R0,-(SP)
+PELING:	MOV	R0,-(SP)	; PELING: подсчёт позиции курсора и числа экранных строк, занимаемых текстом
 	MOV	R1,-(SP)
 	MOV	R3,-(SP)
 	SUB	#BUF,R1
@@ -726,7 +748,7 @@ PELING:	MOV	R0,-(SP)
 RSSE:	MOV	R0,(SP)
 	MOV	R1,-(SP)
 	MOV	R5,-(SP)
-SSE:	EMT	34
+SSE:	EMT	34		; SSE: EMT 34 - слово состояния дисплея
 	ROR	R0
 	BCS	1$
 	MOV	#100,R0
@@ -734,6 +756,7 @@ SSE:	EMT	34
 1$:	MOV	#40,R0
 	RTS	PC
 ;
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
 ;
 ; ----------------------
@@ -752,7 +775,7 @@ IVS::	CLR	ARSK
 ; ВХОД : КОД В R0 (МЛ. БАИТ)
 ;
 	.IFT
-ISV::	EMT	16
+ISV::	EMT	16		; ISV: вывести символ R0 на экран (EMT 16)
     .IF	EQ,KONTYP-KLAS
 	TST	EKRHUK
 	BEQ	1$
@@ -761,11 +784,16 @@ ISV::	EMT	16
     .ENDC
 	RETURN
 	.IFTF
-ISVTO::	TST	IODEV
-	BEQ	ISV
+; ISVTO - вывести один символ (R0) с учётом перенаправления IODEV: экран -
+; как обычно (ISV); принтер/файл - через ISVETO, оформив символ как строку
+; из 1 байта в BUFOUT (LF выводится как пара CR,LF - принтер/файл получают
+; настоящий LF вторым байтом).
+ISVTO::	TST	IODEV		; ISVTO
+	BEQ	ISV		; экран => обычный вывод символа =>
 	MOV	#BUFOUT,R1
-	MOV	#1,R2
+	MOV	#1,R2		; длина по умолчанию - 1 символ
 	MOVB	R0,@R1
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
 	JMP	ISVEIL
 ;
@@ -795,7 +823,7 @@ ISV::	TSTB	ARSTV
 ; ### ЧТЕНИЕ СТРОКИ ###
 ; ---------------------
 ;
-IVEIL::	MOV	R0,-(SP)		;СОХРАНЕНИЕ РЕГИСТРОВ
+IVEIL::	MOV	R0,-(SP)	;СОХРАНЕНИЕ РЕГИСТРОВ
 	MOV	R2,-(SP)
 	MOV	R3,-(SP)
 	MOV	R5,-(SP)
@@ -988,16 +1016,16 @@ KISV:	CALL	ISV		;ОТОБРАЖЕНИЕ ОЧЕРЕДНОГО СИМВОЛА
 ;		  - СИМВОЛ ОГРАНИЧИТЕЛЬ (СТ. БАИТ)
 ;
 	.IFT
-ISVETO::MOV	R3,-(SP)
-	MOV	IODEV,R3
-	BNE	LP
+ISVETO::MOV	R3,-(SP)	; ISVETO: вывод строки R1,R2 на устройство IODEV: 0 - экран, <0 - принтер, >0 - файл
+	MOV	IODEV,R3	; R3 = IODEV
+	BNE	LP		; не экран =>
 	MOV	(SP)+,R3
-ISVEIL::
+ISVEIL::			; ISVEIL: вывод строки (R1 адрес, R2 длина) на экран
     .IF	EQ,KONTYP-KLAS
 	MOV	R1,-(SP)
 	MOV	R2,-(SP)
     .IFTF
-	EMT	20
+	EMT	20		; EMT 20 - вывод строки
     .IFT
 	TST	EKRHUK
 	BEQ	3$
@@ -1006,7 +1034,7 @@ ISVEIL::
 	MOV	R0,-(SP)
 	MOV	R3,-(SP)
 	MOV	R2,R3
-	SWAB	R3
+	SWAB	R3		; R3 = байт-терминатор (старший байт R2)
 	BIC	#177400,R2
 1$:	MOVB	(R1)+,R0
 	CALL	@EKRHUK
@@ -1018,44 +1046,44 @@ ISVEIL::
     .ENDC
 3$:	RETURN
 ;
-LP::	BPL	FILOUT
+LP::	BPL	FILOUT		; LP: вывод строки на принтер (IODEV < 0) или в файл
 	MOV	R0,-(SP)
 	MOV	R5,-(SP)
 	MOV	R2,R3
 	SWAB	R3
 	BIC	#177400,R2
-	MOV	#ARPORT,R5
-	MOVB	#23,R0
-	CALL	LPISV
+	MOV	#ARPORT,R5	; R5 -> регистр программируемого порта
+	MOVB	#23,R0		; код 23 принтеру (инициализация)
+	CALL	LPISV		; послать
 1$:	MOVB	(1)+,R0
-	CMPB	R0,#37
+	CMPB	R0,#37		; управляющий символ?
 	BLOS	2$
-	CMPB	R0,#177
+	CMPB	R0,#177		; 127..255 - печатные =>
 	BLO	3$
 	CMPB	R0,#277
 	BHI	3$
-2$:	CMPB	R0,#10
+2$:	CMPB	R0,#10		; BS?
 	BEQ	6$
-	CMPB	R0,#14
+	CMPB	R0,#14		; FF/CR/(205)?
 	BEQ	8$
 	CMPB	R0,#15
 	BEQ	8$
 	CMPB	R0,#205
 	BEQ	8$
-	CMPB	R0,#12
+	CMPB	R0,#12		; LF: сначала CR
 	BNE	9$
 	MOVB	#15,R0
 	CALL	LPISV
 	MOV	#12,R0
-8$:	CLRB	LPTPOS
+8$:	CLRB	LPTPOS		; LPTPOS - головка в начало строки
 	BR	9$
-6$:	DECB	LPTPOS
+6$:	DECB	LPTPOS		; BS: позиция - 1
 	BGT	9$
 	MOVB	#77,LPTPOS
 	BR	9$
-3$:	INCB	LPTPOS
-9$:	CALL	LPISV
-	CMPB	R0,R3
+3$:	INCB	LPTPOS		; печатный символ: позиция + 1
+9$:	CALL	LPISV		; послать
+	CMPB	R0,R3		; терминатор?
 	BEQ	5$
 	SOB	R2,1$
 5$:	MOV	(SP)+,R5
@@ -1063,19 +1091,20 @@ LP::	BPL	FILOUT
 	MOV	(SP)+,R3
 	RETURN
 ;
-LPISV:	BIC	#177000,R0
-	BIS	#400,R0
-2$:	BIT	#400,@R5
+LPISV:	BIC	#177000,R0	; LPISV: послать байт R0 принтеру через порт ARPORT
+	BIS	#400,R0		; бит 8 - строб
+2$:	BIT	#400,@R5	; ждать готовности
 	BEQ	2$
-	MOV	R0,@R5
-3$:	BIT	#400,@R5
+	MOV	R0,@R5		; выдать байт
+3$:	BIT	#400,@R5	; ждать приёма
 	BNE	3$
-	CLR	@R5
-	CMPB	LPTPOS,#100
+	CLR	@R5		; снять строб
+	CMPB	LPTPOS,#100	; длина строки принтера 64. (100 окт.)
 	BLE	1$
 	CLRB	LPTPOS
 1$:	RETURN
 ;
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
 ISVETO::
 ISVEIL::MOV	R0,-(SP)
@@ -1147,17 +1176,17 @@ FILOUT:	TST	(SP)+
 	.IFTF
 	CALL	FNDBUF
 	BITB	#1,(R0)+
-	BNE	NOTOUT
+	BNE	NOTOUT		; открыт не для вывода => ошибка =>
 	CLR	R3
 	BISB	@R0,R3
 	ADD	R0,R3
 	ADD	#21,R3
 COPOUT::DEC	R2
 	BMI	NOSTEP
-	MOVB	(R1)+,(R3)+
-	INCB	@R0
-	BNE	COPOUT
-	MOV	R1,-(SP)
+	MOVB	(R1)+,(R3)+	; скопировать байт в буфер файла
+	INCB	@R0		; учесть его в счётчике заполнения буфера (в FCB)
+	BNE	COPOUT		; буфер ещё не полон => следующий байт =>
+	MOV	R1,-(SP)	; буфер полон - сохранить позицию в источнике
 	DEC	R0
 	CALL	CASCII
 	CALL	CAS
@@ -1165,10 +1194,11 @@ COPOUT::DEC	R2
 	MOV	(SP)+,R1
 	SUB	#400,R3
 	INC	R0
-	BR	COPOUT
+	BR	COPOUT		; продолжить с оставшимися байтами
 NOSTEP:	RETURN
-NOTOUT:	TRAP	52.
+NOTOUT:	TRAP	52.		; ошибка: файл не открыт для вывода
 ;
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
     .IFF
 ALRIC:	CMPB	R0,#20
 	BNE	1$
@@ -1202,54 +1232,58 @@ STEP:	TST	LYGIS
 	ADD	#20,SP
 	NEG	TRFLAG
 	MOV	ADRHLT,R4
-	BNE	TRIN
+	BNE	TRIN		; уже стояли на останове => найти следующий оператор =>
 	MOV	FCB,R4
 	TST	(R4)+
 	BR	STP2
 1$:	TRAP	17.
 TRIN::	MOV	#IRPS2-10,@#BREAKW
-      	CALL	AGAUD
-STP2:	CLR	AUTOON
-	CLR	NUMBER
-	CMP	-(R4),-(R4)
-	JSR	R0,SETST
-	BR	50$
+      	CALL	AGAUD		; найти запись строки, содержащую R4 (текущий адрес)
+STP2:	CLR	AUTOON		; выключить AUTO-режим
+	CLR	NUMBER		; сбросить текущий номер строки
+	CMP	-(R4),-(R4)	; сдвинуть R4 на 4 байта назад (см. AGAUD/DEL)
+	JSR	R0,SETST	; зарегистрировать позицию (0/1-сдвиг возврата)
+	BR	50$		; 0-сдвиг => продолжить поиск следующего оператора =>
 	JMP 	SYS1
-50$:	CMP	(4)+,(4)+
-	MOV	R4,R2
+; 50$..22$ - классифицировать текущий оператор (KODTST): GOTO/GOSUB/RETURN/
+; RESTORE => 3$, IF/ON => 4$ (через IFGAUD), иначе обычный оператор. Находит
+; целевую строку перехода и ставит на неё останов (REPA/HCOR). Разбор
+; операндов через TRAP 110/111 понятен в общих чертах, детали не выяснены.
+50$:	CMP	(4)+,(4)+	; пропустить 4 байта (заголовок оператора)
+	MOV	R4,R2		; R2 = начало кода оператора
 	MOV	R4,R0
-	MOV	-(0),R0
-	JSR	R5,KODTST
-	BR	3$
-	BR	4$
-	CMPB	#40,@R0
+	MOV	-(0),R0		; R0 = слово опкода оператора (перед R4)
+	JSR	R5,KODTST	; классифицировать опкод
+	BR	3$		; GOTO/GOSUB/RETURN/RESTORE =>
+	BR	4$		; IF/ON =>
+	CMPB	#40,@R0		; обычный оператор: это FOR?
 	BNE	21$
-	JSR	R5,NEXPAP
+	JSR	R5,NEXPAP	; FOR - обработать через NEXPAP (см. ниже)
 	MOV	R2,R4
-21$:	SUB	#6,R4
+21$:	SUB	#6,R4		; точка останова - сразу после заголовка оператора
 	BR	32$
-4$:	MOV	R0,R3
+4$:	MOV	R0,R3		; R3 -> текст оператора IF/ON (для поиска номеров строк)
 	INC	R3
-41$:	CMPB	(3)+,#12
-	BEQ	45$
-42$:	JSR	R2,IFGAUD
-	BR	45$
-	BR	41$
+41$:	CMPB	(3)+,#12	; конец строки текста оператора?
+	BEQ	45$		; да - завершить =>
+42$:	JSR	R2,IFGAUD	; найти следующий символ-разделитель/номер строки
+	BR	45$		; конец =>
+	BR	41$		; не найдено - следующий символ =>
     	CMP	#4,R5
 	BNE	47$
-	JSR	R5,NEXPAP
+	JSR	R5,NEXPAP	; спецсимвол - через NEXPAP =>
 	BR	42$
 47$:	CMP	#6,R5
 	BEQ	42$
 	MOV	R5,R0
-48$:	TRAP	110
+48$:	TRAP	110		; разобрать номер строки-цели
 	BR	43$
-	TRAP	111
+	TRAP	111		; найти её в таблице строк
 	BR	44$
 	BR	42$
-44$:	JSR	R5,HCOR
-	TRAP	112
-	CMPB	#',,@R3
+44$:	JSR	R5,HCOR		; поставить точку останова на найденной строке
+	TRAP	112		; пропустить пробелы
+	CMPB	#',,@R3		; следующий операнд через запятую (ON ... GOTO n1,n2,...)?
 	BNE	42$
 	INC	R3
 	BR	48$
@@ -1257,123 +1291,139 @@ STP2:	CLR	AUTOON
 	BR	21$
 43$:	CMP	#2,R0
 	BNE	42$
-	JSR	R5,REPA
+	JSR	R5,REPA		; строка не найдена - попробовать место возврата GOSUB
 	BR	42$
 	BR	44$
-3$:	CMPB	#74,@R0	;RESTORE
-	BEQ	21$
+3$:	CMPB	#74,@R0		;RESTORE
+	BEQ	21$		; RESTORE без разбора операнда - точка останова сразу за ним =>
 	INC	R0
 	MOV	R0,R3
-	TRAP	110
+	TRAP	110		; разобрать номер строки-цели (GOTO/GOSUB/RETURN)
 	BR	31$
-	TRAP	111
+	TRAP	111		; найти её в таблице строк
 	BR	32$
 	NOP
-31$:	JSR	R5,REPA
+31$:	JSR	R5,REPA		; не найдена - через REPA (место возврата GOSUB)
 	BR	37$
-32$:	JSR	R5,HCOR
+32$:	JSR	R5,HCOR		; найдена - поставить точку останова
 37$:	MOV	R2,R4
     	MOV	SP,PNTSAV
 	CALL	EILUTE
 	TST	TRFLAG
-	BLE	2$
+	BLE	2$		; трассировка выключена => без скобок =>
 	MOVB	#133,R0
-	CALL	ISV
+	CALL	ISV		; вывести "["
 	BIS	#20000,R2
 	CALL	ISVEIL
 	MOVB	#135,R0
-	CALL	ISV
+	CALL	ISV		; вывести "]"
 	BR	22$
 2$:	CALL	ISVEIL
 22$:	MOV	-(4),R4
 	MOV	#BREAK,@#BREAKW
-	JMP	VYKDYT
+	JMP	VYKDYT		; вернуться в интерпретатор (выполнить один оператор)
 ;
+; REPA - помощник STEP: если есть активный GOSUB, найти его точку возврата
+; в таблице строк (AGAUD), чтобы туда тоже можно было поставить останов.
 REPA:	TST	(SP)+
 	CMP	LENT,LIMIT
-	BEQ	1$
-	MOV	@LIMIT,R4
-	CALL	AGAUD
+	BEQ	1$		; нет активных GOSUB => вернуться как есть =>
+	MOV	@LIMIT,R4	; R4 = адрес возврата ближайшего активного GOSUB
+	CALL	AGAUD		; найти его запись в таблице строк
 	CMP	-(4),-(4)
-	TST	(5)+
+	TST	(5)+		; 1-сдвиг адреса возврата
 1$:	MOV	R5,PC
 ;
+; HCOR - помощник STEP: ставит временную точку останова на строке R4 (если
+; она действительна и не равна текущему оператору) - сохраняет исходное
+; слово кода на стеке и подменяет его переходом на STPEND.
 HCOR:	TST	(SP)+
-	JSR	R0,SETST
-	BR	2$
-	BR	1$
-2$:	CMP	(4)+,(4)+
+	JSR	R0,SETST	; проверить/зарегистрировать строку
+	BR	2$		; строка действительна => поставить точку останова =>
+	BR	1$		; иначе => выйти без установки =>
+2$:	CMP	(4)+,(4)+	; пропустить служебные слова записи (см. AGAUD)
 	CMP	R4,R2
-	BEQ	1$
+	BEQ	1$		; цель = текущий оператор => не ставить =>
 	CMP	R4,TABTOP
-	BLO	1$
-	CMP	-(4),-(4)
-	MOV	@R4,R4
-	MOV	R4,-(SP)
-	MOV	@R4,-(SP)
-	INC	NUMBER
-	MOV	#STPEND,@R4
+	BLO	1$		; цель вне таблицы строк => не ставить =>
+	CMP	-(4),-(4)	; сдвинуть R4 на 4 байта назад
+	MOV	@R4,R4		; R4 = реальный адрес кода строки-цели
+	MOV	R4,-(SP)	; сохранить адрес для восстановления в STPEND
+	MOV	@R4,-(SP)	; сохранить подменяемое слово кода
+	INC	NUMBER		; отметить, что точка останова поставлена
+	MOV	#STPEND,@R4	; подменить код переходом на STPEND
 1$:	MOV	R5,PC
 ;
+; NEXPAP - помощник STEP: поставить точку останова (HCOR) на строке каждого
+; активного FOR (стек CIKL..LIMIT). AUTOON временно занят как флаг реентрантности
+; и хранилище адреса возврата. Размер кадра FOR (ROL R0/BCS) не выяснен до конца.
 NEXPAP:	TST	AUTOON
-	BEQ	1$
-	RTS	R5
+	BEQ	1$		; не в процессе обхода => начать =>
+	RTS	R5		; уже внутри обхода (реентрантный вызов) => просто выйти
 1$:	TST	(SP)+
-	MOV	R5,AUTOON
-	MOV	CIKL,R1
+	MOV	R5,AUTOON	; сохранить адрес возврата (и флаг "идёт обход")
+	MOV	CIKL,R1		; R1 -> вершина стека кадров
 3$:	CMP	R1,LIMIT
-	BHIS	2$
-	MOV	2(1),R4
-	CALL	AGAUD
+	BHIS	2$		; вышли за пределы кадров FOR (дошли до GOSUB) => готово =>
+	MOV	2(1),R4		; поле кадра -> адрес строки цикла
+	CALL	AGAUD		; найти её запись в таблице строк
 	CMP	-(4),-(4)
-	JSR	R5,HCOR
-	MOV	@R1,R0
-	ADD	#10,R1
+	JSR	R5,HCOR		; поставить точку останова на этой строке
+	MOV	@R1,R0		; слово кадра (флаг/тип?)
+	ADD	#10,R1		; перейти к следующему кадру (мин. размер)
 	MOV	-(0),R0
-	ROL	R0
+	ROL	R0		; проверить бит в слове кадра
 	BMI	3$
-	ADD	#14,R1
+	ADD	#14,R1		; иначе кадр больше - доп. смещение
 	BR	3$
-2$:	MOV	AUTOON,PC
+2$:	MOV	AUTOON,PC	; вернуться по сохранённому адресу
 ;
 STPEND::MOV	#IRPS2-10,BREAKW
-	JSR	R2,SEPAP
-	TST	-(R4)
+	JSR	R2,SEPAP	; снять все точки останова, восстановить код
+	TST	-(R4)		; поправить R4 (сдвинуть на слово назад)
 	TST	TRFLAG
-	BLE	1$
-	JMP	TRIN
+	BLE	1$		; трассировка выключена => настоящая остановка =>
+	JMP	TRIN		; включена => искать следующую точку останова =>
 1$:	MOV	R4,ADRHLT
 	NEG	TRFLAG
 	MOV	#BREAK,BREAKW
 	JMP	STAR
 ;
+; SEPAP - общий сброс выполнения: снимает точки останова STEP (пары
+; адрес/слово из стека, по счётчику NUMBER, до отметки PNTSAV) и сбрасывает
+; стек интерпретатора. Вызывается при остановке/завершении программы
+; (STOP, END, ошибка, CTRL/C), не только после STEP.
 SEPAP::	TST	(SP)+
-	INC	ERRS
+	INC	ERRS		; временно запретить выполнение
 	TST	PNTSAV
-	BEQ	5$
-	MOV	PNTSAV,SP
+	BEQ	5$		; точек останова не было (обычный сброс) =>
+	MOV	PNTSAV,SP	; откатить стек к отметке начала сканирования STEP
 2$:	DEC	NUMBER
 	BLT	5$
-	MOV	(SP)+,@(SP)+
+	MOV	(SP)+,@(SP)+	; восстановить очередное подменённое слово кода
 	BR	2$
 5$:	CLR	PNTSAV
-	MOV	#STACK,SP
-	CLR	ERRS
+	MOV	#STACK,SP	; сбросить стек интерпретатора к началу
+	CLR	ERRS		; снова разрешить выполнение
 	CLR	NUMBER
 	MOV	R2,PC
 ;
 	.IFT
-CURON::	EMT	34
+; CURON/CUROFF - включить/выключить курсор. EMT 34 - слово состояния
+; дисплея в R0 (бит 14, #40000 = "гашение курсора"); код 232 через ISV
+; переключает это состояние, поэтому обе проверяют бит и шлют код только
+; когда переключение действительно нужно.
+CURON::	EMT	34		; получить слово состояния дисплея в R0
 	BIT	#40000,R0
-	BEQ	C2
-C1:	MOV	#232,R0
+	BEQ	C2		; курсор уже виден (не погашен) => ничего не делать =>
+C1:	MOV	#232,R0		; курсор погашен => переключить (включить)
 	CALL	ISV
 C2:	RETURN
 ;
-CUROFF::EMT	34
+CUROFF::EMT	34		; получить слово состояния дисплея в R0
 	BIT	#40000,R0
-	BEQ	C1
-	RETURN
+	BEQ	C1		; курсор виден => переключить (погасить) =>
+	RETURN			; уже погашен => ничего не делать
 ;
 INKEY::	MOV	#INK,-(SP)
 	CLR	-(SP)
@@ -1423,7 +1473,9 @@ ERROM:	CMP	R0,#10
 	BNE	NEXROM
 	JSR	R0,STATUSQ
 ;
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
+; SIGNAL - подать звуковой сигнал (BEL).
 SIGNAL::MOV	#7,R0
 	CALL	ISV
 	RETURN
@@ -1440,6 +1492,7 @@ ADDRMN::TRAP	106
 	MOV	#1000,SP
 	JMP	100274
 ;
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
 	.IF	EQ,MASINA-MDS
 	COM	TIMER
@@ -1452,44 +1505,50 @@ ADDRMN::TRAP	106
 	JMP	0
 ;
 	.IFTF
-LOC::	TST	(SP)+
+LOC::	TST	(SP)+		; LOC: включить/выключить курсор (LOCATE ,,n)
 	BNE	1$
 	CALL	CUROFF
 	JMP	@(R4)+
 1$:	CALL	CURON
 	JMP	@(R4)+
 ;
-ZONA::
+; ZONA - запятая-разделитель PRINT: добить пробелами до границы следующей
+; 16-позиционной зоны. Колонка берётся по устройству (IODEV), остаток до
+; границы печатает SPC1 (общий хвост с TAB/SPC).
+ZONA::				; ZONA
 	.IFT
 	MOV	IODEV,R3
-	BLT	3$
-	BGT	4$
-	EMT	26
+	BLT	3$		; принтер =>
+	BGT	4$		; файл =>
+	EMT	26		; экран: опросить текущую колонку курсора в R1
 	MOV	R1,-(SP)
 	BR	41$
-3$:	MOVB	LPTPOS,-(SP)
+3$:	MOVB	LPTPOS,-(SP)	; принтер: текущая колонка на строке
 	BR	41$
-4$:	CALL	FNDBUF
-	MOVB	@R0,-(SP)
-41$:	SUB	#20,@SP
-	BGT	41$
-	BEQ	42$
-	NEG	@SP
-	BR	SPC1
-42$:	MOV	#20,@SP
+4$:	CALL	FNDBUF		; файл: найти FCB
+	MOVB	@R0,-(SP)	; текущая колонка вывода в файл
+41$:	SUB	#20,@SP		; вычесть одну зону (16 позиций)
+	BGT	41$		; ещё есть целые зоны до текущей колонки => =>
+	BEQ	42$		; колонка ровно на границе зоны => =>
+	NEG	@SP		; иначе - остаток до конца текущей зоны
+	BR	SPC1		; => вывести столько пробелов
+42$:	MOV	#20,@SP		; на границе - добить всю следующую зону целиком
 	BR	SPC1
 ;
+; Упрощённый вариант (другая конфигурация): просто выводить пробелы, пока
+; колонка TABX не достигнет кратности 16.
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
 	MOV	#40,R0
-1$:	CALL	ISV
+1$:	CALL	ISV		; вывести пробел
 	BITB	#17,TABX
-	BNE	1$
+	BNE	1$		; колонка ещё не кратна 16 => следующий пробел =>
 2$:	JMP	@(R4)+
 ;
 	.IFT
 ;SPC::	CALL	TIKR
 ;	BR	SPC1
-TAB::	CALL	TIKR
+TAB::	CALL	TIKR		; TAB: TAB(n)
 	MOV	IODEV,R3
 	BEQ	1$
 	BGT	2$
@@ -1513,7 +1572,7 @@ TIKR:	TSTB	3(SP)
 	BNE	NOUSR
 	RETURN
 ;
-AT::	CALL	TIKR
+AT::	CALL	TIKR		; AT: AT(x,y)
 	MOV	(SP)+,R2
 	TST	IODEV
 	BNE	TAB
@@ -1522,37 +1581,37 @@ AT::	CALL	TIKR
 	EMT	24
 	JMP	@(R4)+
 ;
-DLOCX::	CMP	(SP)+,(SP)+
+DLOCX::	CMP	(SP)+,(SP)+	; LOCX: колонка курсора (EMT 26)
 SLOCX::	TST	(SP)+
 ILOCX::	TST	(SP)+
 LOCX::	EMT	26
 	MOV	R1,-(SP)
 	JMP	@(R4)+
 ;
-DLOCY::	CMP	(SP)+,(SP)+
+DLOCY::	CMP	(SP)+,(SP)+	; LOCY: строка курсора
 SLOCY::	TST	(SP)+
 ILOCY::	TST	(SP)+
 LOCY::	EMT	26
 	MOV	R2,-(SP)
 	JMP	@(R4)+
 ;
-$KEY::	MOV	(SP)+,R0
-	CMP	R0,#16.
+$KEY::	MOV	(SP)+,R0	; $KEY: KEY n,"текст": запомнить текст функциональной клавиши
+	CMP	R0,#16.		; длина текста не больше 16.
 	BLOS	1$
 	MOV	#16.,R0
 1$:	MOV	(SP)+,R2
 	MOV	(SP)+,R3
 	BLE	NOUSR
-	CMP	R3,#10.
+	CMP	R3,#10.		; номер клавиши 1..10
 	BGT	NOUSR
-	MOV	#FNKSTR-17.,R1
+	MOV	#FNKSTR-17.,R1	; R1 -> запись клавиши в FNKSTR (по 17. байт)
 2$:	ADD	#17.,R1
 	SOB	R3,2$
-	MOVB	R0,(R1)+
+	MOVB	R0,(R1)+	; длина
 	BLE	4$
 3$:	MOVB	(R2)+,(R1)+
 	SOB	R0,3$
-4$:	CALL	ISVSS
+4$:	CALL	ISVSS		; показать строку клавиш
 	JMP	@(R4)+
 ;
     .IF EQ,1
@@ -1584,6 +1643,7 @@ KEYOFF::MOV	@#214,R2
 	JMP	@(R4)+
 ;
     .ENDC
+; Ветка .IFF (до ближайшего .IFT/.IFTF): код других машин (EL60, NC80, SM4, MDS) - в сборку БК-0010 не входит.
 	.IFF
 AT::	MOV	(SP)+,R2
 1$:	SUB	#30,R2
@@ -1729,12 +1789,12 @@ CAS1:	MOV	#MAG,R1
 ;TRP:	MOV	#IRPS2-10,@#BREAKW
 ;	MOVB	#4,@#MAG+1
 ;	BR	IRPS2
-IRPS::
+IRPS::				; IRPS: обмен через последовательный интерфейс ИРПС (префикс TT:) по блоку параметров магнитофона MAG
     .IFT
 	BIC	#100,@#IRPSRG
     .IFTF
 ;	MOV	#TRP,@#BREAKW
-	BIS	#100,@#177660
+	BIS	#100,@#177660	; разрешить прерывание клавиатуры
 	MOV	R0,-(SP)
 	MOV	R1,-(SP)
 	MOV	R2,-(SP)
@@ -1744,7 +1804,7 @@ IRPS::
 ;	MOV	SP,R4
 	CLR	R5
 	MOVB	@#IRPSRG+2,R0
-	MOVB	(R1)+,R0
+	MOVB	(R1)+,R0	; имя/заголовок
 	CALL	ISVT
 	CALL	IVT
 	MOV	R1,R2
@@ -1760,7 +1820,7 @@ IRPS::
 	CMPB	-2(R1),#3
 	BLO	6$		;BK->TT
 	ADD	#6,R2
-10$:	;CLR	@#MSTART	;TT->BK
+10$:				;CLR	@#MSTART	;TT->BK
 	CALL	IVT
 	MOVB	R0,(R2)+
 	SOB	R3,10$
@@ -1813,11 +1873,11 @@ IRPS2::	MOV	#MAG+32,R2
     .IFTF
 	RETURN
 ;
-IVT:	TSTB	@#IRPSRG
+IVT:	TSTB	@#IRPSRG	; IVT: принять байт из ИРПС
 	BPL	IVT
 	MOVB	@#IRPSRG+2,R0
 	RETURN
-ISVT:	TSTB	@#IRPSRG+4
+ISVT:	TSTB	@#IRPSRG+4	; ISVT: передать байт в ИРПС
 	BPL	ISVT
 	MOVB	R0,@#IRPSRG+6
 	RETURN
