@@ -1,4 +1,4 @@
-# Generated from BASIC-BK-19870225/names.txt by x-focal-xlate.py (code byte matching).
+# Generated from BASIC-BK-19870225/names.txt by x-basic8x-xlate.py (code byte matching).
 # Hand-made names for basic02bk.bin (БЕЙСИК 87), read by x-dis2.py (4th input: names file).
 # N <octal addr> <name>      label
 # K <octal addr> <text>      comment line above the label
