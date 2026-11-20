@@ -1,0 +1,159 @@
+﻿
+	.Mcall	.LookUp .ReadW .Enter .WritW .Close .Print
+	.Mcall	.Exit .CsiSpc .Settop
+
+
+
+Start:
+	.Settop	#-1
+	.Enter	#Area,#0,#OutPut,#-1
+	Bcs	6$
+
+	Mov	#Itab,r5
+
+	.Lookup	#Area,#1,(r5)+
+	Bcs	3$
+	.ReadW	#Area,#1,#SysBuffer,#1000,#0
+	Bcs	3$
+	.Close	#1
+;	Mov	#SysBuffer,r2
+;	Mov	#400,r3
+;	Call	Crypt
+;	Mov	#SysBuffer+1400,r0
+;	Mov	#400,r1
+;1$:	Clrb	(r0)+
+;	Sob	r1,1$
+	Mov	#SysBuffer+1400,r4
+	Mov	#2,r3
+
+2$:	Mov	(r5)+,r1
+	Beq	Exit
+	.LookUp	#area,#1,r1
+6$:	Bcs	3$
+
+	Mov	r0,r1
+	Ash	#8.,r1
+	.ReadW	#Area,#1,#StartBuffer,r1,#0
+	Bcs	3$
+	.Close	#1
+	Mov	StartBuffer+40,(r4)
+	Mov	StartBuffer+50,2(r4)
+	Sub	(r4),2(r4)
+	Asr	2(r4)
+	Inc	2(r4)
+	Mov	r3,4(r4)
+	Mov	(r4),r1
+	Add	#StartBuffer,r1
+	Push	r3
+	Mov	r1,r2
+	Mov	2(r4),r3
+	
+	Call	Crypt
+	Pop	r3
+	
+	.WritW	#Area,#0,r1,2(r4),r3
+3$:	Bcs	IoError
+	Mov	2(r4),r1
+	Ash	#-8.,r1
+	Inc	r1
+	Add	r1,r3
+	Add	#6,r4
+	Br	2$
+Exit:
+;	Mov	#SysBuffer+1000,r2
+;	Mov	#200,r3
+;	Call	Crypt
+	Mov	#SysBuffer+1400,r2
+	Mov	#200,r3
+	Call	Crypt
+	
+	
+	.WritW	#Area,#0,#SysBuffer,#1000,#0
+	.Close	#0
+	.Exit
+
+IoError:
+	.Print	#Ierror
+	.Exit
+
+
+Crypt:
+	Push	r0
+	Push	r1
+	Push	r4
+	Push	r5
+	Mov	#40,r4
+	Mov	#^rOWG,r0
+	Mov	#^rELJ,r1
+1$:	Call	GetRand
+	Xor	r0,(r2)+
+	Sob	r3,1$
+	Pop	r5
+	Pop	r4
+	Pop	r1
+	Pop	r0
+	Return
+	
+		
+GetRand:
+;	Mov	#1,r5
+2$:	Ashc	#1,r0
+	Bvc	1$
+ 	Bis	r4,r1
+1$:;	Sob	r5,2$
+	Return
+		
+
+
+
+
+
+
+
+
+Itab:	
+	i1
+;	i2
+	i3
+	i4
+	
+	0
+
+I1:	.rad50	/dk Start Sav/
+I2:	.rad50	/dk OutScrSav/
+I3:	.rad50	/dk Ide   Sav/
+I4:	.rad50	/dk Basic Sav/
+
+
+OutPut:	.Rad50	/dk Turbo Sav/
+DevExt:	.Rad50	/SavSavSavSav/
+
+Area:
+	.Blkw	7
+
+
+
+
+
+
+
+Tlinw:	.Ascii	/Tlink-U-/<200>
+NoOutp:	.Asciz	/Can't create output file/
+NoRoom:	.Asciz	/SAV device full/
+IError:	.Asciz	"Input/Output error"
+NoFile:	.Asciz	/File not found/
+InvCom:	.Asciz	/Invalid command/
+
+
+
+
+SysBuffer	= .
+StartBuffer	= SysBuffer + 2000
+FileBuffer	= StartBuffer + 1000
+
+
+	
+	
+	.End	Start
+	
+	

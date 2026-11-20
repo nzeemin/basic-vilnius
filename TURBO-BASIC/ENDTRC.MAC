@@ -1,0 +1,233 @@
+﻿
+;	Подключение системных макроопределений
+
+.Mcall	.ReadW .WritW .Close .Enter .LookUp .SetTop .Exit
+.Mcall	.Print .CsiGen ..V1.. .TtyOut .GtLin
+
+	..V1..
+
+
+;	Внутренние макроопределения
+
+.Macro	PutCh	Char=r0
+.iif	dif Char,r0	Movb	Char,r0
+	Call	PutCh
+.EndM
+
+.Macro	GetCh	Char=r0
+	Call	GetCh
+.iif	dif Char,r0	Movb	r0,Char
+.EndM
+
+
+;	Начало исполняемой части
+Start:
+	.SetTop	#-2
+
+Loop:
+	Mov	#StrBuf,R1		; Запрос строки с терминала
+2$:	.GtLin	r1,#Prom
+	Tstb	(r1)			; Пустая строка ?
+	Bne	1$
+	.Print	#Hlp			; Да вывод информации 
+	Br	2$
+1$:	.CsiGen	#Driver,#DefExt,r1	; Обработка введенной строки
+	Bcc	3$			; Ошибка была ?
+	Jsr	r5,Error		; Да - Сообщить
+	.Word	CsiErr
+	Br	Loop			; Цикл
+	
+					; Инициализация переменных
+3$:	Clr	RdBlk			; Номер блока во входном файле
+	Mov	#IBuff,RdPtr		; Указатель в буфере входном потока
+					; Номер блока в выходном файле
+	Clr	WrBlk
+	Mov	#OBuff,WrPtr		; Указатель в буфере выходного потока
+	Clr	EndId
+
+Loop1:
+	
+
+	Call	GetS
+	Bcs	Loop
+	Bne	1$
+	Call	PutS
+	Bcs	Loop
+	Br	Loop1
+1$:	Call	Close
+	.Exit
+	
+	
+	
+	
+GetS:	
+	Mov	#Line,r5
+1$:	GeTch	(r5)
+	Bcs	3$
+	Tstb	(r5)
+	Beq	10$
+	
+	Cmpb	(r5)+,#12
+	Bne	1$
+	Dec	r5
+	Dec	r5
+2$:	Cmpb	-(r5),#40
+	Beq	2$
+	Inc	r5
+	Movb	#15,(r5)+
+	Movb	#12,(r5)+
+	Clrb	(r5)+
+3$:	Return
+	
+10$:
+	ClZ
+	Return
+	
+	
+PutS:
+	Mov	#Line,r5
+1$:	Movb	(r5)+,r0
+	Beq	2$
+	Call	PutCh
+	Bcc	1$
+2$:	Return
+
+	
+	
+	
+	
+
+
+
+
+;	Чтение байта из входного потока
+
+GetCh:
+	Cmp	RdPtr,#IBuff		; Буфер исчерпан
+	Bne	1$			; Нет.
+	.ReadW	3,#IBuff,#400,RdBlk	; Иначе считать с диска.
+	Bcc	2$			; Обработка ошибки, если была
+	
+;	Tst	@#52
+;	Bne	5$
+;	Mov	#-1,EndId
+;	Return
+
+5$:	Jsr	r5,Error
+	.Word	IOErr
+	Br	3$
+
+2$:	Inc	RdBlk			; Переход на следующий блок
+
+1$:	Clr	r0
+	Bisb	@RdPtr,r0		; Считать символ
+	
+	Inc	RdPtr			; Перевести указатель
+	Cmp	RdPtr,#IBuff+1000	; Кольцо.
+	Blo	4$
+	Mov	#IBuff,RdPtr	
+4$:	Clc
+3$:	Return				; Возврат в программу
+
+;	Запись байта в выходной поток
+PutCh:
+	Movb	r0,@WrPtr		; Запись символа в буфер
+	Inc	WrPtr			; Перевод указателя в буфере 
+	Cmp	#OBuff+1000,WrPtr	; Буфер исчерпан ?
+	Bhi	3$			; Нет - выход.
+	Call	BWrite			; Иначе запись на диск
+3$:	Return				; Возврат
+
+;	Процедура закрытия потоков
+Close:
+	Call	BWrite			; Запись буфера выходного потока
+
+		
+					; Освобождение каналов Rt11
+	.Close	0
+	.Close	3
+	Return
+
+;	Процедура записи буфера в выходной поток
+BWrite:
+	Mov	WrPtr,r0		; Обнуление конца буфера
+1$:	Clr	(r0)+
+	Cmp	r0,#OBuff+1000
+	Blo	1$
+	.WritW	0,#OBuff,#400,WrBlk	; Запись на диск
+	Bcc	2$			; Обработка возможной ошибки
+	Jsr	r5,Error
+	.Word	IOErr	
+	Br	3$
+2$:	Mov	#OBuff,WrPtr		; Перевод указателя на начало
+	Inc	WrBlk			; Переход на следующий блок
+
+	Clc
+3$:	Return
+	
+	
+
+
+;	Процедура обработки ошибки 
+
+Error:
+	.Print	#HLin$			; Вывод имени программы
+	Mov	(r5)+,r0		; Раздел ошибки
+	Mov	@#52,r1			; Код ошибки
+	Beq	2$			; 
+1$:	Tstb	(r0)+			; Поиск нужного сообщения
+	Bne	1$
+	Sob	r1,1$
+2$:	Emt	351			; Вывод его на терминал
+	Sec
+	Rts	r5			; Возврат
+
+
+
+;	Область данных
+
+DefExt:	.Rad50	/LSTLST/
+
+
+;	Текстовые сообщения 
+Prom:	.Ascii	/EndTrc>/<200>
+Hlp:	.Asciz	/Text files optimiser, By Gerasimov Oleg/
+Hlin$:	.Ascii	/EndTrc-F-/<200>
+
+CsiErr:	.Asciz	/Invalid command/
+	.Asciz	/No device/
+	.Asciz	/Output file protected/
+	.Asciz	/Directory overflow/
+	.Asciz	/File not found/
+
+IOErr:	.Asciz	/Unexpected end of file/
+	.Asciz	"I/O error"
+	.Asciz	/Invalid chanel/
+
+
+;	Область буферов и переменных
+
+StrBuf:	.Blkb	81.			; Буфер ввода комндной строки
+	.Even
+EndId:	.Blkw
+RdPtr:	.Blkw				; Указатель в буфере ввода
+RdBlk:	.Blkw				; Номер блока входного файла
+WrPtr:	.Blkw				; Указатель в буфере вывода
+WrBlk:	.Blkw				; Номер блока выходного файла
+Line:	.Blkb	256
+
+Driver	=  . 				; Область для загрузки драйверов
+
+IBuff	= Driver + 3000			; Буфер входного потока
+OBuff	= IBuff + 1002			; Буфер выходного потока
+
+Header	= OBuff + 1002			; Буфер заголовка
+
+
+
+
+
+
+	.End	Start			; Конец модуля
+	
+	

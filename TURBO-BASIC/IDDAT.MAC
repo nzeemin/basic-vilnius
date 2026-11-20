@@ -1,0 +1,159 @@
+﻿
+;******************************************************************************
+;*                                 Файл данных                                *
+;*                               Файл : Ide.Mac                               *
+;*                    Свободное распространение (Free Ware)                   *
+;*                          Герасимов Олег   (08.06.95)                       *
+;******************************************************************************
+
+	
+	.Includ	/Ide.Mlb/
+	Define
+	.RelDef	C
+
+
+.Psect	Data
+
+.Radix	10.
+
+
+MAIN::
+REL	.WORD	MAINM
+	.COLOR	BLACK,CYAN
+	.Byte	5,1,4,10,17,29,40
+REL	.WORD	<TOP,FILE,SEARCH,COMP,OPTI,HELP>
+
+TOP:
+REL	.WORD	TOPM
+	.WIND	MENU,0,1,30,3,BLUE,CYAN
+REL	.WORD	<F01,F02,F03>
+
+FILE:
+REL	.WORD	FILEM
+	.WIND	MENU,3,1,24,7,BLUE,CYAN
+REL	.WORD	<F11,F12,F13,F14,F15,F81,F19>
+
+
+SEARCH:
+REL	.WORD	SEARCM
+	.WIND	MENU,9,1,23,4,BLUE,CYAN
+REL	.WORD	<F31,F33,F34,F35>
+
+COMP:
+REL	.WORD	COMPM
+	.WIND	MENU,16,1,26,4,BLUE,CYAN
+REL	.WORD	<F41,F51,F45,F61>
+
+
+
+OPTI:
+REL	.WORD	OPTIM
+	.WIND	MENU,28,1,22,4,BLUE,CYAN
+REL	.WORD	<F741,F742,F744,F75>
+
+HELP:
+REL	.WORD	HELPM
+	.WIND	MENU,39,1,28,5,BLUE,CYAN
+REL	.WORD	<F91,O2HLP,O3HLP,O5HLP,F95>
+
+
+	; KEYBOARD RECODING TABLE
+	.RADIX	8.
+
+AKTAB::	.WORD	7234,7514,10254,7774,10534
+NKEY::	.BYTE	222,174,172,152,6,10,12,16,20,244,216,214,242,270,170,0,1
+ 	.EVEN
+	; THE KEYBOARD JUMPING TABLE
+
+UKJMP::	.BYTE	5,LEFT,RIGHT,ENTER,DOWN,ESCAPE
+REL	.WORD	<$UL,$UR,$UE,$UE,$UES,$UUNK>
+
+EXJMP::	.BYTE	6,UP,DOWN,ENTER,LEFT,RIGHT,ESCAPE,0
+REL	.WORD	<$EU,$ED,$EE,$EL,$ER,$EES,$EUNK>
+
+
+ESLHOR::
+	.BYTE	0,18.,22.,58.
+REL	.WORD	ROL.HD
+	.WORD	175.,0
+
+ESLVER::.BYTE	1,79.,2.,18.
+REL	.WORD	ROL.GD
+	.WORD	1000.,0
+
+
+
+
+ETB::	
+REL	.WORD	<ETT+4.,ETT+10.,ETT+14.>
+
+
+.Psect	Text
+	.BYTE	0
+ETT:	.ASCIZ	/Ctrl/
+	.ASCIZ	/Shift/
+	.ASCII	/Alt/
+	
+
+
+
+MainM::	.Asciz	/ =  Файл  Поиск  Компиляция  Настройки  Справка /<13>
+
+TopM:	.Asciz	/О программе/<3><1><5>/F10/ 
+	.Asciz	<2>/Графический редактор/<1><5>/F2/
+	.Asciz	/Редактор шрифта/<1><5>/F3/
+
+FileM:	.Asciz	/Открыть/<3><1>/F3/
+	.Asciz	/Новый/
+	.Asciz	/Сохранить/<1>/F2/
+	.Asciz	/Сохранить как/<3>
+	.Asciz	/Сохранить все/
+	.Asciz	<2>/Обновить экран/<1><4>/W/
+	.Asciz	/Выход/<1><6>/X/
+
+SearcM:	.Asciz	/Поиск/<3>
+	.Asciz	/Продолжить поиск/
+	.Asciz	<2>/Переход к строке/<3>
+	.Asciz	/Последняя ошибка/
+
+CompM:	.Asciz	/Запуск/<1><4>/F9/
+	.Asciz	/Компиляция/<1><6>/F9/
+	.Asciz	/Сброс программы/<1><4>/F2/
+	.Asciz	/Калькулятор/<3><1><4>/F4/
+
+OptiM:	.Asciz	/Система/<3>
+	.Asciz	/Редактор/<3>
+	.Asciz	<2>/Палитра/<3>
+	.Asciz	<2>/Запись настроек/
+
+HelpM:	.Asciz	/Содержание/
+	.Asciz	/Оглавление/<1><5>/F1/
+	.Asciz	/Поиск слова/<1><4>/F1/
+	.Asciz	/Предыдущий контекст/<1><6>/F1/
+	.Asciz	<2>/Помощь в помощи/
+
+
+
+UL::	.Ascii	/╔═[/<206>/]/
+
+
+DLL::	.Asciz	/Считывается /<13>
+DLS::	.ASCIZ	/Сохраняется /<13>
+DLD::	.ASCIZ	/файл установок./
+DL2::	.Ascii	/ F1 Помощь  F2 Запись  F3 Чтение  Alt+F9 Компиляция/
+	.Asciz	/ Alt+X Выход/<13>
+NOTF::	.ASCIZ	/Файл не найден :/<13>
+IOERTX::.ASCII	"Ошибка ввода вывода                                  "
+	.ASCIZ	"Enter - Повтор  Esc отказ"<13>
+SUCSTR::.ASCIZ	/Успех/
+ERRSIR::.ASCIZ	/Ошибка/
+EbStr::	.Asciz	<33>/Y/<55.>/ Нажмите любую клавишу для возврата./<13>
+PRKEYT::.ASCIZ	/: Нажмите любую клавишу/ 
+SWNSC::	.ASCIZ	/DK:TB0000.SWP/
+CRSWFL::.ASCIZ	/Создается файл подкачки.../<13>
+LDSWFL::.ASCIZ	/Загружается файл подкачки.../<13>
+DSFILE::.ASCIZ	/DK:TURBO.DSC/
+NFILE::	.ASCIZ	/DK:NONAME.BAS/
+
+	.Even
+	.End

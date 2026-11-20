@@ -1,0 +1,205 @@
+﻿	.INCLUDE /GENUKD.MAC/
+	.SBTTL	DATREG
+	.ENABLE LC
+
+
+
+
+	HS=3
+
+	MAGSIZ==54	;30
+	WR.==20
+	RD.==10
+	FR.==14		;30
+	NER.==1
+	MER.==2
+	FER.==3
+	RER.==10
+	SER.==-1
+
+	NAMEW==4	;10
+	ADRW==24	;4
+	LENW==26	;6
+	NAMER==30	;10
+	ADRR==50	;4
+	LENR==52	;6
+
+	FLEN=4
+
+.Macro	.Dw	Name,Type
+	Name	== Count
+	.If	B	Type
+	Count	= Count + 2
+	.Iff
+	Count	= Count + <Type*2>
+	.EndC
+.EndM
+
+
+.Macro	.Db	Name,Type
+	Name	== Count
+	.If	B	Type
+	Count	= Count + 1
+	.Iff
+	Count	= Count + Type
+	.Endc
+.EndM
+
+
+
+Count	=	STACK
+
+.DW	LYGIS				;РЕЖИМ РАБОТЫ СИСТЕМЫ
+.DW	TXEND				;МЕТКА КОНЦА ТЕКСТА И НАЧАЛА ОБ'ЕКТНОГО КОДА
+.DW	STRREG				;МЕТКА НАЧАЛА ОБЛАСТИ СТРОК
+.DW	STRSIZ				;УКАЗАТЕЛЬ ДЛИНЫ ОБЛАСТИ СТРОК
+.DW	FREBEG				;МЕТКА СВОБОДНОЙ ЧАСТИ ОБЛАСТИ СТРОК
+.DW	FRELEN				;ТЕКУЩАЯ ДЛИНА СВОБОДНОЙ ЧАСТИ ОБЛАСТИ СТРОК
+.DW	ENDCOD				;МЕТКА НАЧАЛА СВОБОДНОЙ ОБЛАСТИ
+					;И КОНЦА ОБ'ЕКТНОГО КОДА
+.DW	CIKL				;МЕТКА НАЧАЛА СТЕКА ЦИКЛОВ
+.DW	LIMIT				;УКАЗАТЕЛЬ ВЕРШИНЫ СТЕКА ПОДПРОГРАММ
+.DW	LENT				;МЕТКА НАЧАЛА ТАБЛИЦЫ ИМЕН
+.DW	TABTOP				;МЕТКА КОНЦА ТАБЛИЦ СВЯЗИ И ИМЕН
+.DW	FCB				;МЕТКА НАЧАЛА ОБЛАСТИ ФАЙЛОВ И ТАБЛИЦЫ СВЯЗИ
+.DW	DFCB				;МЕТКА КОНЦА СИСТЕМНОГО БУФЕРА
+.DW	HIMEM				;УКАЗАТЕЛЬ ВЕРХНЕГО АДРЕСА, ДОСТУПНОГО БЕЙСИКУ
+.DW	WHIMEM				;МАКСИМАЛЬНО ДОПУСТИМОЕ ЗНАЧЕНИЕ HIMEM
+
+
+.DW	ERRS				;ПРИЗНАК ЗАПРЕТА ВЫПОЛНЕНИЯ ПРОГРАММЫ
+.DW	TYPE				;ТИП КОМПИЛИРУЕМОГО ВЫРАЖЕНИЯ
+.DW	DATBEG				;УКАЗАТЕЛЬ НАЧАЛА БУФЕРА DATA
+.DW	DATPTR				;ТЕКУЩИЙ УКАЗАТЕЛЬ БУФЕРА DATA
+.DW	DATINP				;ФЛАГ READ/INPUT
+.DW	NUMBER				;НОМЕР КОМПИЛИРУЕМОЙ СТРОКИ
+.DW	ADRHLT				;АДРЕС ОСТАНОВА ПРОГРАММЫ
+.DW	TRFLAG				;ФЛАГ РЕЖИМА ТРАССИРОВКИ
+.DW	AUTOON				;ФЛАГ РЕЖИМА AUTO
+.DW	AUINC				;AUTO ПРИРАЩЕНИЕ
+.DW	CURLIN				;УКАЗАТЕЛЬ ТЕКУЩЕЙ СТРОКИ
+.DW	VCTNMB				;ЧИСЛО ЗАДЕЙСТВОВАНЫХ ON TRAP
+.DW	III	FLEN/2			;РАБОЧИЕ ЯЧЕЙКИ ФУНКЦИИ RND
+.DW	RNDSAV	FLEN/2			;ТЕКУЩЕЕ ЗНАЧЕНИЕ RND
+
+
+.DW	USRTAB	10.			;ТАБЛИЦА АДРЕССОВ USR
+
+
+.DW	WRITE				;АДРЕС ДРАЙВЕРА
+.DW	IODEV				;НОМЕР ТЕКУЩЕГО ФАЙЛА
+.DW	SAVJMP				;ЯЧЕЙКА ХРАНЕНИЯ ТЕКУЩЕГО ЗНАЧЕНИЯ УКАЗАТЕЛЯ
+					;ВЫПОЛНЯЕМОЙ ПРОГРАММЫ
+.DW	PNTSAV				;РАБОЧАЯ ЯЧЕЙКА ШАГА
+.DW	PFACT	2			;УКАЗАТЕЛЬ БЛОКА ПАРАМЕТРОВ ДЛЯ FN
+.DW	TMPSP				;УКАЗАТЕЛЬ СПИСКА ВРЕМЕННЫХ ДЕСКРИПТОРОВ
+.DW	$SCRT				;РАБОЧАЯ ПЕРЕМЕННАЯ DRAW
+.DW	LPTPOS				;СЧЕТЧИК ГОЛОВКИ ПРИНТЕРА
+.DW	LPLCFL				;ПРИЗНАК РУССКОГО РЕГИСТРА ПРИНТЕРА
+
+
+.DW	LL				; ДЛИНА СТРОКИ ЭКРАНА
+.DW	MIDLE				; СМЕЩЕНИЕ СТРОК К ЦЕНТРУ ЭКРАНА
+.DW	ENDBUF				; КОНЕЦ ЭКРАННОГО БУФЕПА
+.DB	KOM2P				; ПРИЗНАК КОДОВ ИЗ 2-ОЙ КОМ.СИСТ.
+.DB	SCRL				; ПРИЗНАК "ПЕРЕМОТКИ" ЭКРАНА
+.DW	CURS				; МЕСТО КУРСОРА В БУФЕРЕ
+.DW	TABX				; МЕСТО
+.DW	TABY				;       КУРСОРА НА ЭКРАНЕ
+.DW	FIRST
+.DW	LAST
+.DW	RUSLAT
+
+.DW	GRPEN
+.DW	GRPAP
+.DW	CHRBOX
+
+
+.DW	CHAR
+.DW	PAPER
+.DW	CRTGRP
+
+
+
+					;ХРАНЕНИЕ ВЕКТОРОВ ПРЕРЫВАНИЯ
+.DW	SAUG	14			;И КОМАНД ПЕРЕЗАПУСКА СИСТЕМЫ
+
+.DW	BRKFLG				;ФЛАГ BREAK
+
+.DW	PARAM	5			;БЛОК ПАРАМЕТРОВ ДРАЙВЕРОВ
+
+.DW	MAG	MAGSIZ/2
+
+.DW	INCNMB
+.DB	ASCFLG
+.DB	ENDFLG
+.DW	BLKCNT
+.DW	BUFCNT
+.DW	WSCCA
+
+.DW	APRL	15			; ТАБЛИЦА НЕЯВНОГО ОПРЕДЕЛЕНИЯ ТИПОВ
+.DW	LABTOP				; 
+					; ПЕРЕМЕНЫЕ ДРАЙВЕРА ТУРБО-ГРАФИКИ
+	
+.DW	RADR				; АДРЕС НАЧАЛА ВИДЕО ПАМЯТИ
+.DW	RWIDTH				; ИСТИНАЯ ШИРИНА СТРОКИ В ОКТЕТАХ
+.DW	HOTKB				; КОД ПОСЛЕДНЕЙ НАЖАТОЙ КЛАВИШИ (УК)
+.DW	KBBIT				; БИТОВАЯ МАСКА НАЖАТЫХ КЛАВИШ
+.DW	DRVREG				; РЕГИСТР СОСТОЯНИЯ ГРАФИЧЕСКОГО КАНАЛА
+.DB	CODP				; КОД ГРАФИЧЕСКОЙ КОМАНДЫ
+.DB	PASSW				; ПАРОЛЬ EXECUTE = 20
+.DW	WORK0				; РАБОЧИЕ ЯЧЕИКИ 
+.DW	WORK1
+.DW	WORK2
+.DW	WORK3
+.Dw	Sc12Id				; Признак Screen 12 (Ibm 640*480)
+.Dw	ApdId				; Признак добавления к файлу
+.DW	EXTFLG				; ФЛАГ ПРИСУТСВИЯ IDE
+
+					; ПЕРЕМЕНЫЕ ДРАЙВЕРА ДИСКОВОЙ ПОДДЕРЖКИ IDE
+	
+.DB	PCOD				; КОД ОПЕРАЦИИ
+.DB	PREADY				; ФЛАГ ГОТОВНОСТИ ЦП
+.DW	PNAME	4			; ИМЯ ФАЙЛА
+.DW	PBLOCK				; СТАРТОВЫЙ БЛОК 
+.DW	PLEN				; ДЛИНА УЧАСТКА ФАЙЛА В БЛОКАХ
+.DW	PERR				; КОД ОШИБКИ
+
+				
+					; ЗАПРОС СЛЕДУЮЩЕЙ СТРОКИ ПРИ КОМПИЛЯЦИИ
+.DW	CPCD				; КОД
+.DW	EXTSP				; ЯЧЕЙКА ДЛЯ СОХРАНЕНИЯ SP
+.DW	RTI100
+.DW	SAV474				; Ячейка для сохранения вектора 474 
+.Db	DbgId				; Признак Debug Information
+.Db	TboId				; Признак создания .tbo файла
+.Dw	MemAvl
+
+.DW	CURTAB
+
+.DB	DEVNAM	4
+.DB	FLENAM	7
+.DB	EXTNAM	4
+.DB	MASKID
+
+
+.DB	DEFALT	14.
+.DB	FLMASK	14.
+.DW	DS
+.Dw	ES
+.Dw	ApdBuf	24.
+
+
+
+.DW	BUFFIL	400			;Буфер файла
+.DW	BUF	200			;БУФЕР ВВОДА
+.DW	BUFOUT	14			;БУФЕР ВЫВОДА
+BEND	== Count
+EndCPV	== Count
+
+.Asect
+.	= Count
+
+	.Even
+	.END
+

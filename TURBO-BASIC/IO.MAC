@@ -1,0 +1,319 @@
+﻿;******************************************************************************
+;*                     Блок  ввода/вывода ТурбоБейсик                         *
+;*                      Проект ТурбоБейсик для УК-НЦ                          *
+;*                       Распространение свободное                            *
+;*               1986 Вильнюс, 24/10/95 (Герасимов Олег)                      *
+;******************************************************************************
+
+	.INCLUDE /GENUKD.MAC/
+	.SBTTL	INOUT
+	.ENABLE	LC
+
+;******************************************************************************
+;*                       Константы блока ввода/вывода                         *
+;******************************************************************************
+
+	LF	== 12
+	CR	== 15
+	FF	== 14
+	ESC	== 33
+	ERRBYT	== 52
+	MCSR	= 176674
+	MDBR	= 176676
+	AWPM	= 474
+	ARSK	== 177560
+	ARDK	= 177562
+	ARSTV	= 177564
+	ARDTV	= 177566
+	AVPK	== 60
+	LN	== 23.
+	MAXLL	== 80.
+	IRPR=176664
+	AWPKL==60
+	DEVEXT==0
+
+.PSECT	BASIC
+
+;******************************************************************************
+;*                            Инициализация блока                             *
+;******************************************************************************
+MIDM::	Mov	#5007,@#Buf
+	Clr	@#IODev
+	Call	GrInit
+	Clrb	@#Kom2P
+	Return
+;******************************************************************************
+;*                        Вывод символа на устройство                         *
+;******************************************************************************
+ISVTO::	TST	IODEV
+	BEQ	ISV
+	MOV	#BUFOUT,R1
+	MOV	#1,R2
+	CMPB	R0,#LF
+	BNE	1$
+	INC	R2
+	MOVB	R0,1(R1)
+	MOV	#CR,R0
+1$:	MOVB	R0,@R1
+	JMP	ISVETO
+
+
+;******************************************************************************
+;*                        Ввод символов для Input                             *
+;******************************************************************************
+INBF0::	Push	r3
+	Push	r0
+	Mov	#Buf,r3
+2$:	Call	Iv
+	Cmpb	r0,#40
+	Bhis	4$
+	Cmpb	r0,#33
+	Bne	1$
+	Call	Iv
+	Br	2$
+1$:	Cmpb	r0,#15
+	Beq	7$
+	Cmpb	r0,#16
+	Beq	3$
+	Cmpb	r0,#17
+	Bne	2$
+3$:	Call	Isv
+	Br	2$	
+4$:	Cmpb	#177,r0
+	Beq	5$
+	Cmpb	#377,r0
+	Bne	6$
+5$:	Cmp	r3,#Buf
+	Beq	2$
+	Mov	#BS,r1
+	Clr	r2
+	Call	ISVEIL
+	Dec	r3
+	Br	2$
+6$:	Cmp	r3,#Buf+377
+	Bhis	2$
+	Movb	r0,(r3)+
+	Call	Isv
+	Br	2$
+7$:	Movb	#12,(r3)+
+	Mov	#25,r0
+	Call	ISV
+	Cmp	#Buf,r3
+	Pop	r0
+	Pop	r3
+	Return
+
+BS:	.Byte	33,104,40,33,104,0
+
+;	;----------------------------------------------
+;	;	ВЫВОД СИМВОЛА
+;	;		ВХОД:	РО-КОД СИМВОЛА
+;	;----------------------------------------------
+	
+Isv::
+	Tstb	@#ARSTV
+	Bpl	.-4
+	Movb	r0,@#ARDTV
+	Cmp	r0,#14.
+	Bne	1$
+	Mov	#200,RusLat
+1$:	Cmpb	r0,#15.
+	Bne	2$
+	Clr	RusLat
+2$:	Return
+
+
+	;--------------------------------------------
+	;	ВЫВОД СТРОКИ
+	;		ВХОД:	R1-НАЧАЛЬНЫЙ АДРЕС
+	;			R2-ДЛИНА (МЛАДШИЙ БАЙТ)
+	;			  -ПРИЗНАК КОНЦА (СТАРШИЙ БАЙТ)
+	;--------------------------------------------
+	;
+ISVEIL::
+	Push	r0
+	Push	r3
+
+	Push	RusLat
+	Beq	4$
+	Mov	#15.,R0
+	Call	ISV
+4$:	Pop	RusLat
+
+	Mov	R2,R3
+	Swab	R3
+1$:	Movb	(R1)+,R0
+	Cmpb	R0,R3
+	Beq	2$
+	Call	ISV
+	Sob	R2,1$
+
+2$:	Tst	RusLat
+	Beq	3$
+	Mov	#14.,r0
+	Call	ISV
+
+3$:	Pop	r3
+	Pop	r0
+	Return
+	
+					;------ КУРСОР В ПОЛОЖЕНИЕ TABX,TABY
+LOK::
+	Mov	#33,r0
+	Call	Isv
+	Mov	#131,R0
+	Call	ISV
+	Mov	TabY,R0
+	Add	#40,R0
+	Call	ISV
+	Mov	TabX,R0
+	Add	#40,R0
+	Jmp	ISV
+;	Return
+
+GetTXY::
+	Mov	#23.,CodP
+	Call	PPExe
+	Tstb	DrvReg
+	Bpl	.-4
+	Mov	Work0,TabX
+	Sub	#80.,TabX
+	Neg	TabX
+	Mov	Work1,TabY
+	Sub	#24.,TabY
+	Neg	TabY
+	Return
+
+
+
+IV::
+	MFPS	-(SP)
+	MTPS	#0
+1$:	CMP	FIRST,LAST
+	BEQ	1$
+	MTPS	(SP)+
+NIM::
+	Clr	r0
+	Bisb	@FIRST,R0
+	Cmpb	r0,#100
+	Blo	MovFrs
+	Bisb	RusLat,r0
+MOVFRS:	INC	FIRST
+	CMP	FIRST,DFCB
+	BNE	1$
+	MOV	FCB,FIRST
+1$:	RETURN
+
+
+ISVETO::
+	TST	IODEV
+	BNE	LP
+	JMP	ISVEIL
+LP:	MOV	R0,-(SP)
+	MOV	R3,-(SP)
+	MOV	R2,R3
+	SWAB	R3
+	CMPB	R3,#LF
+	BNE	7$
+	MOVB	#CR,R3
+7$:	BIC	#177400,R2
+	MOV	@#IODEV,R0
+	BPL	FILOUT
+
+1$:	CMPB	@R1,#LF
+	BNE	9$
+	MOVB	@R1,R0
+	MOVB	#CR,@R1
+	INC	R2
+	BR	10$
+
+9$:	CMPB	@R1,#CR
+	BEQ	6$
+	CMPB	@R1,#FF
+	BNE	4$
+
+6$:	MOV	#-1,@#LPTPOS
+4$:	INC	@#LPTPOS
+	MOVB	(R1)+,R0
+10$:	CALL	LPISV
+	CMPB	R0,R3
+	BEQ	8$
+	SOB	R2,1$
+	BR	5$
+
+8$:	DEC	R2
+5$:	MOV	(SP)+,R3
+	MOV	(SP)+,R0
+	RETURN
+
+LPISV:
+	TSTB	@#IRPR
+	BPL	.-4
+	MOV	R0,@#IRPR+2
+	RETURN
+	;
+
+FILOUT:
+	TST	(SP)+
+	MOV	R0,R3
+	Call	FNDBUF
+	TST	@R0
+	BEQ	NOTOP
+	BIT	#4000,@R0
+	BNE	NOTOUT
+	CLR	R3
+	BISB	@R0,R3
+	ADD	R0,R3
+	ADD	#22,R3
+	CALL	COPOUT
+	MOV	(SP)+,R0
+	RETURN
+
+COPOUT::DEC	R2
+	BMI	1$
+	MOVB	(R1)+,(R3)+
+	INCB	@R0
+	BNE	COPOUT
+	MOV	R1,-(SP)
+	CALL	CASCII
+	CALL	CAS
+	BIS	#400,@R0
+	MOV	(SP)+,R1
+	SUB	#400,R3
+	BR	COPOUT
+1$:	RETURN
+NOTOUT:	TRAP	52.
+NOTOP:	TRAP	59.
+
+WAIT:
+	CLR	@#ARSK
+1$:	TSTB	@#ARSK
+	BPL	1$
+	MOV	#100,@#ARSK
+	RTI
+
+IVS::	MOVB	@#ARDK,@LAST
+	BEQ	WAIT
+	INC	LAST
+	CMP	LAST,DFCB
+	BNE	1$
+	MOV	FCB,LAST
+1$:	CMP	LAST,FIRST
+	BNE	DEJA
+	CALL	MOVFRS
+DEJA:	RTI
+
+USEROM::TRAP	5
+
+
+CURON::
+	Mov	#7,r1
+	Jmp	MIG
+
+CUROFF::
+	Clr	r1
+	Jmp	Mig
+
+KOMDEV::.BYTE	RD.,16,WR.,21,FR.,0
+	.END
+

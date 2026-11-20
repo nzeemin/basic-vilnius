@@ -1,0 +1,332 @@
+﻿	.INCLUDE /GENUKD.MAC/
+	.SBTTL	MONIT
+	.ENABLE LC
+
+
+
+BREAKW	==	4			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ПО КЛАВИШЕ "СТОП"
+ILCODW	==	10			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЯ "НЕДОПУСТИМЫЙ КОД"
+FLOATW	==	244			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ПЛАВАЮЩЕЙ АРИФМЕТИКИ
+TRAPW	=	34			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ПО ИНСТРУКЦИИ TRAP
+TIMER	==	100			;АДРЕС ВЕКТОРА ПРЕРЫВАНИЙ ТАЙМЕРА
+CHIMEM	==	160000
+
+ABRKW	=	070074			;ВЕКТОР ОБРАБОТКИ "СТОП": 160170/2
+AMEM	=	176640			;РЕГИСТР АДРЕСА ДОСТУПА КО ВСЕЙ ПАМЯТИ
+DMEM	=	176642			;РЕГИСТР ДАННЫХ
+
+.MCALL	.SETTOP .EXIT .PRINT .SERR .SCCA .ROFDF .CsiSpc .GtLin
+
+.ROFDF
+
+.GLOBL	JMP,RTS,TRAP
+
+.Psect	Main
+
+START::
+
+
+	Mov	#STACK,SP
+	Mov	@#474,SAV474		; Сохранить вектор дисковода
+	
+10$:	MOV	#SAUG,R0
+	CLR	R1
+	MOV	@#100,RTI100
+	MOV	#6,R2
+6$:	MOV	(R1)+,(R0)+
+	SOB	R2,6$
+	MOV	@#AVPK,(R0)+
+	MOV	@#AVPK+2,(R0)+
+
+	MOV	@#FLOATW,(0)+
+	MOV	@#FLOATW+2,(0)+
+	CLR	@#BRKFLG		;ЗАПРЕТИТЬ BREAK (ДЛЯ УК)
+
+	CLR	RUSLAT
+
+	.SETTOP	#-2
+		
+	MOV	R0,@#WHIMEM
+	MOV	@#WHIMEM,@#HIMEM
+
+	BIS	#10000,@#JSW
+	CLR	@#ASCFLG
+
+	CLR	LPTPOS
+	MOV	#200.,STRSIZ
+	MOV	#AUINC,R0
+	MOV	#12,(0)+
+	MOV	#12,(0)+		;CURLIN
+	CLR	(R0)+			;VCTNMB
+
+	MOV	R0,R1
+	MOV	#40101,(0)+	;III
+	MOV	#27076,(0)+
+	MOV	(1)+,(0)+	;RNDSAV
+	MOV	(1)+,(0)+
+
+	MOV	#10.,R1
+1$:					;USRTAB
+	MOV	#NOUSR,(0)+		;НЕОПРЕДЕЛЕННЫЕ ФУНКЦИИ USR
+	SOB	R1,1$
+
+	MOV	#APRL,R0
+	MOV	#15,R1			;НЕЯВНЫЙ ТИП
+5$:	MOV	#1002,(R0)+
+
+	SOB	R1,5$
+	
+	CLR	@#PNTSAV	;STOPAR
+
+	CALL	CLRTXT
+	CALL	MIDM			;ИНИЦИАЛИЗАЦИЯ УСТРОЙСТВ
+	CALL	IOINI			;ВВОД/ВЫВОД IDE
+	
+	
+	
+	CLR	@#VCTNMB
+
+
+TOSETW:	JMP	SETW
+
+INIT:	MOV	#STACK,SP
+	CALL	MIDM
+	MOV	#14,R0
+	CALL	ISV
+	BR	TOSETW
+
+CTRLC::	BR	BREAK
+
+ADDRMN::
+;	CALL	CURON
+
+	MOV	#SAUG,R0
+	CLR	R1
+	MOV	#6,R2
+1$:	MOV	(R0)+,(R1)+
+	SOB	R2,1$
+	MOV	(R0)+,@#AVPK
+	MOV	(R0)+,@#AVPK+2
+
+	MOV	(0)+,@#FLOATW
+	MOV	(0)+,@#FLOATW+2
+
+
+	MOV	#10024,CODP
+	MOV	RTI100,@#100
+	.EXIT
+
+BRKO::
+
+BREAK::
+
+	MOV	#376,PERR
+	JMP	CPEND
+
+
+SETW::					;УСТАНОВКА ВЕКТОРОВ ПРЕРЫВАНИЙ
+
+	MOV	#137,@#0
+	MOV	#INIT,@#2
+
+	MOV	#BREAKW,R0
+	CALL	TSTVCT
+
+	BCC	2$
+	MOV	#BRKO,@R0
+	MOV	#340,2(R0)
+2$:
+	MOV	#TRAPW,R0
+6$:	CALL	RSTVCT
+	BCC	6$
+	MOV	#TRAP,@R0
+	MOV	#340,2(R0)
+
+	MOV	#AVPK,R0
+3$:	CALL	RSTVCT
+	BCC	3$
+	MOV	#IVS,@R0
+	MOV	#340,2(R0)
+	MOV	#100,@#ARSK
+
+	MOV	#ILCODW,R0
+7$:	CALL	RSTVCT
+	BCC	7$
+	MOV	#ILCDO,@R0
+	MOV	#340,2(R0)
+
+	MOV	#FLOATW,R0
+4$:	CALL	RSTVCT
+	BCC	4$
+	MOV	#FERRI,@R0
+	MOV	#340,2(R0)
+
+	MOV	#ILCDO,@#ILCODW
+
+	Mov	#Text,Ds
+	Push	Es
+	Push	#32
+	Push	#14000
+	Mov	Sp,r5
+	Mov	#4,r2
+1$:	Tstb	@#176674
+	Bpl	1$
+	Movb	r5,@#176676
+	Swab	r5
+	Sob	r2,1$
+	
+
+
+	
+	
+	
+
+	BR	.
+
+FERRI:
+	MOV	R0,-(SP)
+	MTPS	4(SP)
+	BCS	1$
+	BMI	2$
+	BEQ	3$
+	TRAP	6
+
+1$:	TRAP	11.
+3$:	TRAP	5
+2$:	MOV	SP,R0
+	ADD	#6,R0
+
+	CLR	(R0)+
+	CLR	(R0)+
+	MOV	(SP)+,R0
+	RTI
+
+
+
+RTIO::	RTI
+ILCDO::	TRAP	51.
+
+
+
+LC1:	.BYTE	33,'Y,'7,' ,200
+.EVEN
+
+
+ENDPRG::
+END1:	CLR	PERR
+
+	JMP	CPEND
+
+HALT::
+	MOV	#377,PERR
+	JMP	CPEND
+
+CLRBUF::MOV	HIMEM,FCB
+1$:	SUB	#422,FCB
+	CLR	@FCB
+2$:	MOV	FCB,DFCB
+	SUB	#400,FCB
+	MOV	FCB,FIRST
+	MOV	FCB,LAST
+	RETURN
+MEMFUL:	TRAP	7
+
+CLRTXT::CALL	CLRBUF
+CLRTX1::MOV	FCB,TABTOP	;
+	MOV	#TEXT,TXEND
+	CLR	PFACT
+	
+CLRCOD::MOV	TABTOP,LENT
+	MOV	TABTOP,LIMIT
+	MOV	TABTOP,CIKL
+	MOV	TXEND,ENDCOD
+	INC	ENDCOD
+	BIC	#1,ENDCOD
+	MOV	@PC,ERRS		;ЗАПРЕТИТЬ ВЫПОЛНЕНИЕ РАБОЧЕЙ ПРОГРАММ
+	CLR	STRREG
+	RETURN
+	;
+WRESET::MOV	R0,-(SP)
+	MOV	R1,-(SP)
+	MFPS	-(SP)
+	MTPS	#340
+	MOV	#VCTNMB,R0
+2$:	MOV	@R0,R0
+	BEQ	3$
+	CALL	TSTVCT
+	BCS	1$
+	MOV	@R0,R1
+	MOV	-(R1),@R0
+	TST	-(R1)
+	MOV	R1,R0
+	BR	2$
+3$:	CLR	@#VCTNMB
+	MTPS	(SP)+
+	MOV	(SP)+,R1
+	MOV	(SP)+,R0
+	RETURN
+1$:	CLR	@#VCTNMB
+	TRAP	51.
+
+STRMEM::MOV	ENDCOD,R1
+	MOV	R1,FREBEG
+	ADD	STRSIZ,R1
+	MOV	STRSIZ,FRELEN
+	CMP	R1,LENT
+	BHI	MEMFUL
+	MOV	R1,ENDCOD
+	MOV	FREBEG,STRREG
+	RETURN
+
+ISGUNP::MOV	#BUFOUT,R3
+	MOVB	#40,(R3)+
+	TST	R5
+	BPL	1$
+	MOVB	#'-,-1(R3)
+	NEG	R5
+1$:	CALL	I1
+	DEC	R1
+	INC	R2
+	RETURN
+	;
+IUNPCK::
+	MOV	#BUF,R3
+I1::	MOV	R3,-(SP)
+	ADD	#5,R3
+	MOVB	#40,(R3)
+1$:	MOV	#5,R2
+	CLR	R1
+2$:	ASL	R2
+	BCS	4$
+	CMP	R2,R5
+	BLOS	2$
+3$:	CMP	R2,#12
+	BEQ	5$
+	CLC
+4$:	ROR	R2
+	ASL	R1
+	CMP	R2,R5
+	BHI	3$
+	SUB	R2,R5
+	INC	R1
+	BR	3$
+5$:	ADD	#60,R5
+	MOVB	R5,-(R3)
+	MOV	R1,R5
+	BNE	1$
+	MOV	@SP,R5
+	MOV	R5,R1
+	CLR	R2
+	ADD	#6,@SP
+6$:	MOVB	(R3)+,(R5)+
+	INC	R2
+	CMP	R3,@SP
+	BNE	6$
+	TST	(SP)+
+	RETURN
+Switch:
+	.Asciz	/RI/
+	.Even
+	
+.END	START
+

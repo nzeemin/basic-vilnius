@@ -1,0 +1,64 @@
+﻿
+	.MCall	.ReadW ..V1..
+	..V1..
+.Asect
+.=	40
+.Word	Start,Start,1000,0,2000
+
+.=	1000
+Start:
+	Mov	#BeginText,r0
+	Emt	351
+	Mov	#1400,r5
+	Mov	r5,r2
+	Mov	#200,r3
+	Call	Crypt
+
+
+1$:	
+	.ReadW	17,(r5),2(r5),4(r5)
+	Bcs	2$
+	Mov	(r5)+,r2
+	Mov	(r5)+,r3
+	Tst	(r5)+
+	Call	Crypt
+	Push	r5
+	Call	@-6(r5)
+	Pop	r5
+	Bcs	3$
+	Br	1$
+	
+
+2$:	Mov	#IoError,R0
+	Emt	351
+3$:	Emt	350
+
+Crypt:
+	Push	r5
+	Mov	#1,R5
+	Mov	#40,r4
+	Mov	#^rOWG,r0
+	Mov	#^rELJ,r1
+1$:	Ashc	r5,r0
+	Bvc	3$
+ 	Bis	r4,r1
+3$:	Xor	r0,(r2)+
+	Sob	r3,1$
+	Pop	r5
+	Return
+	
+		
+
+
+
+
+
+
+
+BeginText:
+	.Asciz	/The Turbo Basic, Copyright (C) 1994 to 1995, by Gerasimov Oleg/
+IoError:
+	.Asciz	/Error reading overlay.../
+	.Even
+Area:
+	.End

@@ -1,0 +1,603 @@
+﻿;******************************************************************************
+;*                       Модуль контекстной помощи                            *
+;*                           Файл : Help.Mac                                  *
+;*                 Распространение свободное (FreeWare)                       *
+;*                       09.05.95.  Герасимов Олег                            *
+;******************************************************************************
+
+Lbuf	= 1000
+BtArea	= Lbuf
+MaxLin	= BtArea + 100
+CurOfs	= MaxLin + 2
+CurX	= CurOfs + 2
+CurY	= CurX + 2
+CurTop	= CurY + 2
+TopPtr	= CurTop + 2
+EndPtr	= TopPtr + 2
+StrLen	= EndPtr + 2
+StrPtr	= StrLen + 30
+
+
+.Includ	/Ide.Mlb/			; Подключение макро библиотеки
+	Define				; Определение констант
+	.RelDef	K			; Определение макроса Rel
+
+.Psect	System
+
+
+;	Помощь по текстовому редактору
+O1Hlp::
+	Mov	#202,nHelp		; Внутрений код раздела
+	Call	GetHlp			; Получение нужной помощи
+	Return				; Возврат
+
+;	Поиск подтекста
+O3Hlp::
+	Mov	Lb.Ptr,r1
+Rel	Mov	#FdBuf,r2
+1$:	Movb	(r1)+,r0
+	Call	$BtTst
+	Bcs	2$
+	Bicb	#40,r0
+	Movb	r0,(r2)+
+	Br	1$
+2$:	Clrb	(r2)+
+	Call	HlpOpn
+	Bcs	Hl.Err
+	Mov	#100200,r0
+	Call	HlRead
+	Bcs	Hl.Err
+	Tstb	FdBuf
+	Beq	$7
+	Mov	#177010,r4
+	Mov	#177012,r5
+	Mov	@#TopPtr,(r4)
+$3:	Cmpb	(r5),#35
+	Bne	$4
+	Mov	(r4),r3
+	Add	#3,(r4)
+Rel	Mov	#FdBuf,r2
+31$:	Movb	(r5),r0
+	Cmp	r0,#36
+	Bne	30$
+	Tstb	(r2)
+	Bne	$8
+	Br	$81
+30$:	Tstb	(r2)
+	Beq	$8
+	Bic	#40,r0
+	Cmpb	r0,(r2)+
+	Bne	$4
+	Inc	(r4)
+	Br	31$
+$4:	Tstb	(r5)
+	Bne	5$
+	Inc	@#CurOfs
+5$:	Inc	(r4)
+	Cmp	(r4),@#EndPtr
+	Blos	$3
+$7:	Clr	@#CurOfs
+$8:	Mov	#1,@#CurX
+	Jmp	TxtOut
+$81:	Inc	r3
+	Mov	r3,(r4)
+	Mov	(r5),r0
+	Inc	(r4)
+	Swab	r0
+	Bis	(r5),r0
+	Swab	r0
+	Clr	@#CurOfs
+	Jmp	Tsrc
+	
+
+
+
+
+Hl.Err:
+	Push	<#1,#1>
+	Call	$Wloc
+Rel	Print	#NoHl
+	Emt	22	
+	Wclose
+	Return
+	
+
+O4Hlp::	Return
+
+
+;	Предыдущий подтекст
+O5Hlp::
+	Call	HlpOpn
+	Bcs	Hl.Err
+H.Prev:
+	Cmp	LhPtr,#12200
+	Bne	1$
+	Mov	#100202,r0
+	Mov	#120000,r5
+	Br	2$
+1$:	Sub	#6,LhPtr
+	Mov	LhPtr,r5
+	Mov	(r5)+,r0
+2$:	Movb	(r5)+,@#CurX
+	Movb	(r5)+,@#CurY
+	Mov	(r5)+,@#CurOfs
+	Br	TSrc
+	
+
+
+
+
+GetHlp::Call	NhConv
+GtHpNc:	Call	HlpOpn			; Оторыть окно, и файл.
+	Bcs	Hl.Err			; Ошибка в файле - выход.
+	Mov	nHelp,r0		; Поместить в R0 код раздела
+	Jmp	Tsrc			; Поиск и вывод раздела
+
+
+
+;	Help Index
+
+O2HLP::	
+	Clr	nHelp
+	Br	GetHlp
+
+
+
+Tsrc:
+	Call	HlRead
+	Bcs	Hl.Err
+	Jmp	TxtOut
+
+;______________________________________________________________________________
+;	Процедура поиска и чтения нужного подтекстa
+;	Вход : R0 - внутрений код подтекста
+;	Выход PSW:C = 0 успешное завершение.
+;	      PSW:C = 1 неудачное завершение.
+
+HlRead:	Call	ReadHd			; Чтение заголовка
+	Mov	r0,nHelp		; Номер требуемого подтекста
+	Mov	#177010,r5		; Регистр адреса 
+	Mov	#177014,r4		; Регистр данных
+	Mov	Bbuf,(r5)		; Начало буфера в ЦП
+	Add	#2,(r5)			; Смещение к номеру 2 слова
+1$:	Cmp	r0,(r4)			; Нужный номер найден ?
+	Beq	3$			; ДА - приступить к чтению
+	Tst	(r4)			; Конец заголовка ?
+	Beq	2$			; Да - выход с ошибкой
+	Add	#3,(r5)			; Иначе следующая запись
+	Br	1$			; Цикл
+2$:	Sec
+	Return
+
+;	Чтение нужного подтекста
+3$:	Dec	(r5)
+	Mov	(r4),Flen		; Получить длину подтекста в словах
+	Dec	(r5)
+	Mov	(r4),Fblk		; Номер блока
+	Movb	#2,FFFF			; Считать подтекст в ОЗУ ЦП
+	Call	C1Call
+	Mov	bBuf,(r5)
+	Mov	Flen,r2
+	Mov	Dn.Ptr,r1		; Адрес свободного ОЗУ ПП
+	Add	#30.,r1
+	Bic	#1,r1
+	Mov	r1,@#TopPtr
+	Mov	r1,r0
+	Add	r2,r0
+	Cmp	r0,#HiText		; Памяти для загрузки в ПП хватит ?
+	Bhi	2$			; Нет - выход с ошибкой
+	Call	PZUOFF			; Прямой доступ в ОЗУ
+
+4$:	Mov	(r4),(r1)+		; Копирование в ОЗУ ПП
+	Inc	(r5)
+	Sob	r2,4$
+	Mov	r1,@#EndPtr
+	Clr	r0
+
+;	Подсчет числа строк в подтексте
+	Mov	@#TopPtr,(r5)
+5$:	Tstb	2(r5)
+	Bne	6$
+	Inc	r0
+6$:	Inc	(r5)
+	Cmp	(r5),r1
+	Blos	5$
+;	Очистка конца
+	Mov	W4,r2
+7$:	Clrb	(r1)+
+	Sob	r2,7$
+;	Запись количества строк в МП линейки скролинга
+	Sub	W4,r0
+	Bhi	8$
+	Clr	r0
+8$:	Mov	r0,EslHlp+6
+	Call	PZUON			; Отключение прямого доступа в ОЗУ
+	Return				; Успешное завершение
+;______________________________________________________________________________
+
+
+TxtOut:	Color	Black,Cyan
+	Call	ScOut
+BegHt:
+	Flush
+Rel	Mov	#EslHlp,r5
+	Call	ScrBlm
+	
+	Push	@#CurX
+	Inc	(Sp)
+	Push	@#CurY
+	Inc	(Sp)
+	
+	Call	$Wloc
+	Call	TstInv
+	Call	$CurOn
+
+	
+	Emt	22
+	Tst	@#CurTop
+	Beq	1$
+	Call	TWait
+	Call	NamInv
+	
+1$:
+	Call	$CurOff
+Rel	KeyJmp	#HtJmp
+
+
+HtDn:
+	Tst	r5
+	Bne	1$
+	Mov	@#CurY,r0
+	Inc	r0
+	Cmp	r0,W4
+	Bhis	1$
+	Inc	@#CurY
+	Br	BegHt
+1$:
+Rel	Mov	#Dn$$,r0
+	Br	CrMv
+
+
+Dn$$:	
+	Cmp	@#CurOfs,EslHlp+6
+	Bhis	1$
+	Inc	@#CurOfs
+	Return
+1$:	Mov	W4,@#CurY
+	Dec	@#CurY
+	Return
+	
+
+HtUp:
+	Tst	r5
+	Bne	1$
+	Tst	@#CurY
+	Beq	1$
+	Dec	@#CurY
+	Br	BegHt
+	
+1$:	
+Rel	Mov	#Up$$,r0
+
+CrMv:	Mov	#1,r3
+	Cmp	#10,r5
+	Bne	1$
+	Mov	W4,r3
+1$:	Call	(r0)
+	Sob	r3,1$
+	Br	ReSC
+
+	
+Up$$:	Tst	@#CurOfs
+	Beq	1$
+	Dec	@#CurOfs
+	Return
+1$:	Clr	@#CurY
+	Return
+		
+
+ReSc:	Call	ScOut
+	Br	BegHt
+
+
+HtLf:
+	Tst	@#CurX
+	Beq	1$
+	Dec	@#CurX
+1$:	Br	BegHt
+
+HtRf:
+	Mov	@#CurX,r0
+	Tst	(r0)+
+	Cmp	r0,W3
+	Bhi	1$
+	Inc	@#CurX
+1$:	Br	BegHt
+
+
+
+HtEs:
+	Call	HlpSav
+	Jmp	HlpEnd
+	
+HtNt:
+	Mov	@#CurTop,r0
+	Beq	BegHt
+Ts1:	Call	HlpSav
+	Clr	@#CurX
+	Clr	@#CurY
+	Clr	@#CurOfs
+	Jmp	Tsrc
+
+	
+HtF1:
+	Asr	r5
+	Dec	r5
+	Bpl	2$
+	Mov	#100201,r0
+	Br	Ts1
+2$:	Dec	r5
+	Bpl	3$
+	Mov	#100200,r0
+	Br	Ts1
+3$:	Cmp	r5,#2
+	Bne	1$
+	Jmp	H.Prev
+
+
+1$:	Jmp	BegHt
+
+
+HlpSav:
+	Mov	LhPtr,r5
+	Cmp	r5,#12360
+	Blo	2$
+	Sub	#6,r5
+	Mov	#12200,r4
+1$:	Mov	6(r4),(r4)+
+	Cmp	r4,r5
+	Blo	1$
+2$:	Mov	nHelp,(r5)+
+	Movb	@#CurX,(r5)+
+	Movb	@#CurY,(r5)+
+	Mov	@#CurOfs,(r5)+
+	Mov	r5,LhPtr
+	Return
+
+
+
+
+
+
+NhConv:
+	Mov	nHelp,r0
+	Mov	r0,r1
+	Bic	#177400,r1
+	Asl	r0
+	Clrb	r0
+	Bis	r1,r0
+	Bis	#100200,r0
+	Mov	r0,nHelp
+	Return
+	
+
+HlpEnd:
+	Movb	#1,FFFF
+	Call	$$DsCl
+	Wclose
+	Return
+	
+
+HlpOpn:
+Rel	Window	#HelpW
+Rel	Mov	#HName,r1
+
+	Call	$Ncopy
+	Movb	#9.,ffff
+	Call	$$DsCl
+	Bne	$1
+Rel	Mov	#EslHlp,r5
+	Mov	r5,r0
+	Inc	r0
+	Mov	W1,r1
+	Add	W3,r1
+	Inc	r1
+	Movb	r1,(r0)+
+	Movb	W2,(r0)
+	Incb	(r0)+
+	Movb	W4,(r0)
+	Decb	(r0)
+	Decb	(r0)+
+	Call	ScrBlp
+	Mov	#StrLen,r5
+	Mov	W4,r4
+1$:	Movb	W3,(r5)+
+	Sob	r4,1$
+	Clr	@#CurX
+	Clr	@#CurY
+	Clr	@#CurOfs
+	Return
+
+$1:	Sec
+	Return
+
+
+ReadHd:	Clr	Fblk
+	Mov	#4000,Flen
+	Movb	#2,FFFF
+	Call	C1Call
+	Return
+	
+ScOut:
+	Clr	r3
+	Mov	#177010,r5
+	Mov	@#CurOfs,r0
+	Call	GtPtr
+	Mov	#StrPtr,r2
+	Br	2$
+1$:	Mov	(r5),(r2)+
+	Call	Lcpy
+	Inc	(r5)
+	Push	<#1,r3>
+	Call	$Wloc
+	Push	(r5)
+	Print	#Lbuf
+	Pop	(r5)
+2$:	Inc	r3
+	Cmp	r3,W4
+	Blos	1$
+	Return
+	
+	
+
+
+
+
+Lcpy:
+	
+	Mov	#Lbuf,r0
+	Clr	r1
+1$:	Movb	2(r5),(r0)
+	Beq	2$
+	Cmpb	(r0),#40
+	bhis	3$
+	Cmpb	(r0),#35
+	Bhis	5$
+	Movb	#40,(r0)
+3$:	Inc	r1
+	Inc	r0
+7$:	Inc	(r5)
+	Br	1$
+
+2$:	Movb	StrLen(r3),r4
+	Movb	r1,StrLen(r3)
+8$:	Movb	#40,(r0)+
+	Inc	r1
+	Cmp	r1,r4
+	Blo	8$
+	Clrb	(r0)+
+	Return
+
+5$:	Bne	6$
+	Inc	(r5)
+	Inc	(r5)
+	Movb	#33,(r0)+
+	Movb	#240,(r0)+
+	Movb	#67,(r0)+
+	Br	7$
+
+6$:	Movb	#33,(r0)+
+	Movb	#277,(r0)+
+	Movb	#240,(r0)+
+	Br	7$
+
+LGBut:
+	Mov	#177012,r1
+	Clr	r0
+	Mov	#BtArea,r4
+1$:	Tstb	2(r5)
+	Beq	6$
+	Cmpb	#35,(r1)
+	Bne	5$
+	Mov	r0,(r4)+
+	Inc	(r5)
+	Tst	(r4)+
+	Movb	(r1),(r4)+
+	Inc	(r5)
+	Movb	(r1),(r4)+
+	Br	7$
+5$:	Cmpb	#36,(r1)
+	Bne	8$
+	Mov	r0,-4(r4)
+	Br	7$
+
+	
+8$:	Inc	r0
+7$:	Inc	(r5)
+	Br	1$
+	
+	
+	
+6$:	Mov	#-1,(r4)
+	Return
+	
+
+
+
+TstInv:
+	Mov	#177010,r5
+	Push	r0
+	Mov	@#CurY,r3
+	Asl	r3
+	Mov	StrPtr(r3),(r5)
+	Asr	r3
+	Inc	r3
+
+	Call	LGBut
+	Mov	#BtArea,r4
+6$:	Tst	(r4)
+	Bmi	4$
+	Cmp	@#CurX,(r4)
+	Blo	5$
+	Cmp	@#CurX,2(r4)
+	Blo	7$
+5$:	Add	#6,r4
+	Br	6$
+7$:	Call	NamInv
+	Mov	4(r4),@#CurTop
+3$:	Pop	r0
+	Return
+4$:	Clr	@#CurTop
+	Br	3$
+
+
+NamInv:	Call	$Push
+	Add	W2,r3
+	Mov	(r4)+,r1
+	Mov	r1,r2
+	Sub	(r4)+,r2
+	Neg	r2
+	Add	W1,r1
+	Inc	r1
+	Mov	#313,$$$1
+	Call	$Inv
+	Mov	#5113,$$$1
+	Call	$Pop
+	Return
+	
+	
+
+GtPtr:
+	Mov	r5,r4
+	Tst	(r4)+
+	Mov	@#TopPtr,(r5)
+	Tst	r0
+	Beq	4$
+3$:	Inc	(r5)
+	Tstb	(r4)
+	Bne	3$
+2$:	Dec	r0
+	Bne	3$
+	Inc	(r5)
+4$:	Return
+
+	
+
+
+.Psect	Data
+
+
+HtJmp:
+	.Byte	7,Up,Down,Right,Left,Escape,Enter,Fk1
+Rel	.Word	<HtUp,Htdn,HtRf,HtLf,HtEs,HtNt,HtF1,BegHt>
+
+Eslhlp::.Byte	1,0,0,0
+	.Word	CurOfs
+	.Word	0,0
+
+
+HName::	.Asciz	/???:Turbo.Hlp/
+.Even
+
+
+.End
