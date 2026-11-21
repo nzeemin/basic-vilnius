@@ -271,7 +271,7 @@ RWDEF:	.ASCII	/USR /
 ;RWKEY:	.ASCII	/LIST /
 ;RWMOT:	.ASCII	/ON /
 ;	.ASCII	/OFF /
-RWLINE:	.ASCII	/B BF /
+RWLINE:	.ASCII	/B BF /		; B BF: слово B стоит первым и совпадает раньше BF (см. T113) - BF не распознаётся, ошибка 2 (возможная ошибка оригинала; в ПЗУ тоже)
 	.EVEN
 ;
 IF::	TRAP	100
