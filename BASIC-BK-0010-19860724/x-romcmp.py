@@ -1,4 +1,4 @@
-"""Compare ROM range of build/BASIC.SAV (flat 64K memory image) with BK/basic10_{1,2,3}.rom."""
+"""Compare ROM range of build/BASIC.SAV (flat 64K memory image) with basic10_{1,2,3}.rom."""
 import sys, pathlib
 here = pathlib.Path(__file__).resolve().parent
 img = (here / 'build' / 'BASIC.SAV').read_bytes()
@@ -7,7 +7,7 @@ total = diffs = 0
 first = None
 runs = []   # (start_addr, length) of differing byte runs
 for name, base in chips:
-    rom = (here.parent / 'BK' / name).read_bytes()
+    rom = (here / name).read_bytes()
     mine = img[base:base + len(rom)]
     d = [i for i in range(len(rom)) if rom[i] != mine[i]]
     print(f'{name}: {len(rom)} bytes, {len(d)} differ')

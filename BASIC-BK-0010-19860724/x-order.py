@@ -3,7 +3,7 @@ import itertools, subprocess, pathlib, sys
 here = pathlib.Path(__file__).resolve().parent
 bld = here / 'build'; tool = here.parent / 'tools' / 'pclink11.exe'
 objs = sys.argv[1:] or ['BK', 'COMP', 'FLOAT', 'JMP', 'MONIT', 'TRAP']
-rom = b''.join((here.parent / 'BK' / f).read_bytes() for f in ('basic10_1.rom', 'basic10_2.rom', 'basic10_3.rom'))
+rom = b''.join((here / f).read_bytes() for f in ('basic10_1.rom', 'basic10_2.rom', 'basic10_3.rom'))
 res = []
 for p in itertools.permutations(objs):
     r = subprocess.run([str(tool), *[o + '.OBJ' for o in p], '/EXECUTE:T.SAV', '/NOBITMAP'], cwd=bld, capture_output=True, text=True)

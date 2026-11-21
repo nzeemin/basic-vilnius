@@ -1,4 +1,4 @@
-# Оператор SOUND (BASIC-BK-ROM-UNKNOWN)
+# Оператор SOUND (BASIC-BK-0010-ROM-UNKNOWN)
 
 Выводы получены чтением кода (`basic-rom.dis.lst`, метки `C.SOUND`, `SND.ARGS`, `R.SOUND`, `NOTETAB`); оператор в эмуляторе не запускался. В базовом ПЗУ 1986.07.24 `SOUND` нет (есть `BEEP` — вывод кода 7 в канал, `162030`).
 

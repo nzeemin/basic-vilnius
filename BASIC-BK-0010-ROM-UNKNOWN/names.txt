@@ -1,4 +1,4 @@
-# Hand-made names for BASIC-BK-ROM-UNKNOWN (basic-rom.bin = basic10_1..3.rom, 120000-177577), read by x-dis2.py via x-bkrom-build.py.
+# Hand-made names for BASIC-BK-0010-ROM-UNKNOWN (basic-rom.bin = basic10_1..3.rom, 120000-177577), read by x-dis2.py via x-bkrom-build.py.
 # Same format as BASIC-BK-19870225/names.txt. Names of shared code (NAME.OFF) come from x-matchbase.py (base ROM BASIC-BK-0010-19860724).
 # "?" = understood from the code/data only, not confirmed.
 
