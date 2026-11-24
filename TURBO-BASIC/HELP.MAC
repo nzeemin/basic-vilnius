@@ -5,148 +5,165 @@
 ;*                       09.05.95.  Герасимов Олег                            *
 ;******************************************************************************
 
-Lbuf	= 1000
-BtArea	= Lbuf
+;------------------------------------------------------------------------------
+; HELP - контекстная помощь IDE (Герасимов, 09.05.95). Файл Turbo.Hlp: заголовок
+; - записи по 3 слова (блок, длина в словах, код темы), конец - код 0. Тема -
+; текст в строках с нулём на конце; байт 35 + 2 байта кода темы + текст +
+; байт 36 - ссылка
+; (подсвечивается, Enter открывает тему). Код темы внутренний: 100200 -
+; оглавление, 100201 - как пользоваться помощью, 100202 - текстовый редактор;
+; внешний номер nHelp переводит NhConv. Тема читается в ОЗУ ЦП (код 2, BBUF),
+; копируется в ОЗУ ПП (TopPtr..EndPtr, за текстом программы, ПЗУ отключено),
+; в окне 20 строк рисует ScOut. Курсор CurX/CurY, прокрутка CurOfs (полоса
+; EslHlp),
+; история тем - стек по 6 байт в 12200..12360 (LhPtr, HlpSav; Alt-F1 - H.Prev)
+;------------------------------------------------------------------------------
+Lbuf	= 1000			; Рабочая область в ОЗУ ПП (локально для модуля)
+BtArea	= Lbuf			; Таблица ссылок строки (по 6 байт)
 MaxLin	= BtArea + 100
-CurOfs	= MaxLin + 2
-CurX	= CurOfs + 2
-CurY	= CurX + 2
-CurTop	= CurY + 2
-TopPtr	= CurTop + 2
-EndPtr	= TopPtr + 2
-StrLen	= EndPtr + 2
-StrPtr	= StrLen + 30
+CurOfs	= MaxLin + 2		; Номер первой видимой строки
+CurX	= CurOfs + 2		; Курсор: столбец
+CurY	= CurX + 2		; Курсор: строка окна
+CurTop	= CurY + 2		; Код ссылки под курсором (0 - нет)
+TopPtr	= CurTop + 2		; Начало текста темы в ПП
+EndPtr	= TopPtr + 2		; Конец текста темы в ПП
+StrLen	= EndPtr + 2		; Байтовые длины строк окна (30 байт)
+StrPtr	= StrLen + 30		; Адреса строк окна в ПП (слова)
 
 
-.Includ	/Ide.Mlb/			; Подключение макро библиотеки
-	Define				; Определение констант
-	.RelDef	K			; Определение макроса Rel
+.Includ	/Ide.Mlb/		; Подключение макро библиотеки
+	Define			; Определение констант
+	.RelDef	K		; Определение макроса Rel
 
 .Psect	System
 
 
 ;	Помощь по текстовому редактору
+;------------------------------------------------------------------------------
+; O1Hlp..O5Hlp - пункты меню помощи; GetHlp - показать тему nHelp
+;------------------------------------------------------------------------------
 O1Hlp::
-	Mov	#202,nHelp		; Внутрений код раздела
-	Call	GetHlp			; Получение нужной помощи
-	Return				; Возврат
+	Mov	#202,nHelp	; Внутрений код раздела
+	Call	GetHlp		; Получение нужной помощи
+	Return			; Возврат
 
 ;	Поиск подтекста
 O3Hlp::
-	Mov	Lb.Ptr,r1
-Rel	Mov	#FdBuf,r2
-1$:	Movb	(r1)+,r0
-	Call	$BtTst
-	Bcs	2$
-	Bicb	#40,r0
-	Movb	r0,(r2)+
+	Mov	Lb.Ptr,r1	; R1 -> курсор в строке редактора
+Rel	Mov	#FdBuf,r2	; R2 -> образец поиска FdBuf
+1$:	Movb	(r1)+,r0	; Символ слова
+	Call	$BtTst		; Разделитель? (карта BITMAP)
+	Bcs	2$		; Да - слово кончилось
+	Bicb	#40,r0		; В верхний регистр
+	Movb	r0,(r2)+	; В образец
 	Br	1$
-2$:	Clrb	(r2)+
-	Call	HlpOpn
-	Bcs	Hl.Err
-	Mov	#100200,r0
-	Call	HlRead
-	Bcs	Hl.Err
-	Tstb	FdBuf
-	Beq	$7
-	Mov	#177010,r4
-	Mov	#177012,r5
-	Mov	@#TopPtr,(r4)
-$3:	Cmpb	(r5),#35
-	Bne	$4
-	Mov	(r4),r3
-	Add	#3,(r4)
-Rel	Mov	#FdBuf,r2
-31$:	Movb	(r5),r0
-	Cmp	r0,#36
-	Bne	30$
-	Tstb	(r2)
-	Bne	$8
-	Br	$81
-30$:	Tstb	(r2)
-	Beq	$8
-	Bic	#40,r0
-	Cmpb	r0,(r2)+
-	Bne	$4
-	Inc	(r4)
-	Br	31$
-$4:	Tstb	(r5)
-	Bne	5$
-	Inc	@#CurOfs
-5$:	Inc	(r4)
-	Cmp	(r4),@#EndPtr
-	Blos	$3
-$7:	Clr	@#CurOfs
-$8:	Mov	#1,@#CurX
-	Jmp	TxtOut
-$81:	Inc	r3
-	Mov	r3,(r4)
-	Mov	(r5),r0
-	Inc	(r4)
-	Swab	r0
-	Bis	(r5),r0
-	Swab	r0
-	Clr	@#CurOfs
-	Jmp	Tsrc
-	
+2$:	Clrb	(r2)+		; Нуль в конце образца
+	Call	HlpOpn		; Открыть окно и файл помощи
+	Bcs	Hl.Err		; Ошибка - сообщение
+	Mov	#100200,r0	; Раздел 100200 - оглавление
+	Call	HlRead		; Прочитать в ОЗУ ПП
+	Bcs	Hl.Err		; Ошибка - сообщение
+	Tstb	FdBuf		; Образец пуст?
+	Beq	$7		; Да - показать с начала
+	Mov	#177010,r4	; Регистр адреса окна ПП
+	Mov	#177012,r5	; Регистр байта окна ПП
+	Mov	@#TopPtr,(r4)	; Адрес начала текста
+$3:	Cmpb	(r5),#35	; Байт 35 (начало ссылки)?
+	Bne	$4		; Нет - дальше
+	Mov	(r4),r3		; R3 = адрес метки
+	Add	#3,(r4)		; Пропустить метку и 2 байта кода темы
+Rel	Mov	#FdBuf,r2	; R2 -> образец
+31$:	Movb	(r5),r0		; Символ текста ссылки
+	Cmp	r0,#36		; Конец текста ссылки (36)?
+	Bne	30$		; Нет
+	Tstb	(r2)		; Образец тоже кончился?
+	Bne	$8		; Нет - образец длиннее, показать здесь
+	Br	$81		; Полное совпадение - открыть тему
+30$:	Tstb	(r2)		; Образец кончился?
+	Beq	$8		; Да - префикс совпал, показать здесь
+	Bic	#40,r0		; В верхний регистр
+	Cmpb	r0,(r2)+	; Символ совпадает?
+	Bne	$4		; Нет - дальше по тексту
+	Inc	(r4)		; Следующий символ
+	Br	31$		; Цикл
+$4:	Tstb	(r5)		; Конец строки (байт 0)?
+	Bne	5$		; Нет
+	Inc	@#CurOfs	; Да - следующая строка: CurOfs
+5$:	Inc	(r4)		; Следующий байт
+	Cmp	(r4),@#EndPtr	; Конец текста?
+	Blos	$3		; Нет - продолжать
+$7:	Clr	@#CurOfs	; Не найдено - с первой строки
+$8:	Mov	#1,@#CurX	; Курсор в столбец 1
+	Jmp	TxtOut		; Вывести текст
+$81:	Inc	r3		; R3 -> первый байт кода темы
+	Mov	r3,(r4)		; Адрес кода в окно
+	Mov	(r5),r0		; Младший байт кода
+	Inc	(r4)		; Следующий байт
+	Swab	r0		; Собрать слово кода из двух байтов
+	Bis	(r5),r0		; (порядок байтов)
+	Swab	r0		; ...
+	Clr	@#CurOfs	; Тема с первой строки
+	Jmp	Tsrc		; Открыть тему R0
 
 
 
 
+
+; Hl.Err - сообщение "нет файла помощи"
 Hl.Err:
-	Push	<#1,#1>
-	Call	$Wloc
-Rel	Print	#NoHl
-	Emt	22	
-	Wclose
-	Return
-	
+	Push	<#1,#1>		; Позиция 1,1 в окне
+	Call	$Wloc		; Установить курсор
+Rel	Print	#NoHl		; Сообщение: нет файла помощи
+	Emt	22		; Ждать клавишу
+	Wclose			; Закрыть окно
+	Return			; Возврат
 
-O4Hlp::	Return
+
+O4Hlp::	Return			; Пустая функция
 
 
 ;	Предыдущий подтекст
 O5Hlp::
-	Call	HlpOpn
-	Bcs	Hl.Err
+	Call	HlpOpn		; Открыть окно и файл
+	Bcs	Hl.Err		; Ошибка - сообщение
 H.Prev:
-	Cmp	LhPtr,#12200
-	Bne	1$
-	Mov	#100202,r0
-	Mov	#120000,r5
-	Br	2$
-1$:	Sub	#6,LhPtr
-	Mov	LhPtr,r5
-	Mov	(r5)+,r0
-2$:	Movb	(r5)+,@#CurX
-	Movb	(r5)+,@#CurY
-	Mov	(r5)+,@#CurOfs
-	Br	TSrc
-	
+	Cmp	LhPtr,#12200	; История пуста?
+	Bne	1$		; Нет - взять последнюю запись
+	Mov	#100202,r0	; Да - тема 100202 (редактор)
+	Mov	#120000,r5	; Позиция из ячейки 120000 (смысл не выяснен)
+	Br	2$		; Дальше
+1$:	Sub	#6,LhPtr	; Снять запись истории
+	Mov	LhPtr,r5	; R5 -> запись
+	Mov	(r5)+,r0	; R0 = код темы
+2$:	Movb	(r5)+,@#CurX	; CurX
+	Movb	(r5)+,@#CurY	; CurY
+	Mov	(r5)+,@#CurOfs	; CurOfs
+	Br	TSrc		; Найти и вывести тему
 
 
 
 
-GetHlp::Call	NhConv
-GtHpNc:	Call	HlpOpn			; Оторыть окно, и файл.
-	Bcs	Hl.Err			; Ошибка в файле - выход.
-	Mov	nHelp,r0		; Поместить в R0 код раздела
-	Jmp	Tsrc			; Поиск и вывод раздела
+
+GetHlp::Call	NhConv		; Внешний номер -> внутренний код
+GtHpNc:	Call	HlpOpn		; Оторыть окно, и файл.
+	Bcs	Hl.Err		; Ошибка в файле - выход.
+	Mov	nHelp,r0	; Поместить в R0 код раздела
+	Jmp	Tsrc		; Поиск и вывод раздела
 
 
 
 ;	Help Index
 
-O2HLP::	
-	Clr	nHelp
-	Br	GetHlp
+O2HLP::
+	Clr	nHelp		; Код 100200 - оглавление
+	Br	GetHlp		; Вывести
 
 
 
 Tsrc:
-	Call	HlRead
-	Bcs	Hl.Err
-	Jmp	TxtOut
+	Call	HlRead		; Найти и прочитать тему
+	Bcs	Hl.Err		; Ошибка - сообщение
+	Jmp	TxtOut		; Вывести
 
 ;______________________________________________________________________________
 ;	Процедура поиска и чтения нужного подтекстa
@@ -154,449 +171,471 @@ Tsrc:
 ;	Выход PSW:C = 0 успешное завершение.
 ;	      PSW:C = 1 неудачное завершение.
 
-HlRead:	Call	ReadHd			; Чтение заголовка
-	Mov	r0,nHelp		; Номер требуемого подтекста
-	Mov	#177010,r5		; Регистр адреса 
-	Mov	#177014,r4		; Регистр данных
-	Mov	Bbuf,(r5)		; Начало буфера в ЦП
-	Add	#2,(r5)			; Смещение к номеру 2 слова
-1$:	Cmp	r0,(r4)			; Нужный номер найден ?
-	Beq	3$			; ДА - приступить к чтению
-	Tst	(r4)			; Конец заголовка ?
-	Beq	2$			; Да - выход с ошибкой
-	Add	#3,(r5)			; Иначе следующая запись
-	Br	1$			; Цикл
-2$:	Sec
-	Return
+HlRead:	Call	ReadHd		; Чтение заголовка
+	Mov	r0,nHelp	; Номер требуемого подтекста
+	Mov	#177010,r5	; Регистр адреса
+	Mov	#177014,r4	; Регистр данных
+	Mov	Bbuf,(r5)	; Начало буфера в ЦП
+	Add	#2,(r5)		; Смещение к номеру 2 слова
+1$:	Cmp	r0,(r4)		; Нужный номер найден ?
+	Beq	3$		; ДА - приступить к чтению
+	Tst	(r4)		; Конец заголовка ?
+	Beq	2$		; Да - выход с ошибкой
+	Add	#3,(r5)		; Иначе следующая запись
+	Br	1$		; Цикл
+2$:	Sec			; Нет такой темы: C = 1
+	Return			; Возврат
 
 ;	Чтение нужного подтекста
-3$:	Dec	(r5)
-	Mov	(r4),Flen		; Получить длину подтекста в словах
-	Dec	(r5)
-	Mov	(r4),Fblk		; Номер блока
-	Movb	#2,FFFF			; Считать подтекст в ОЗУ ЦП
-	Call	C1Call
-	Mov	bBuf,(r5)
-	Mov	Flen,r2
-	Mov	Dn.Ptr,r1		; Адрес свободного ОЗУ ПП
+3$:	Dec	(r5)		; R5 -> слово длины
+	Mov	(r4),Flen	; Получить длину подтекста в словах
+	Dec	(r5)		; R5 -> слово номера блока
+	Mov	(r4),Fblk	; Номер блока
+	Movb	#2,FFFF		; Считать подтекст в ОЗУ ЦП
+	Call	C1Call		; Выполнить
+	Mov	bBuf,(r5)	; Адрес буфера ЦП
+	Mov	Flen,r2		; R2 = число слов
+	Mov	Dn.Ptr,r1	; Адрес свободного ОЗУ ПП
 	Add	#30.,r1
 	Bic	#1,r1
 	Mov	r1,@#TopPtr
 	Mov	r1,r0
 	Add	r2,r0
-	Cmp	r0,#HiText		; Памяти для загрузки в ПП хватит ?
-	Bhi	2$			; Нет - выход с ошибкой
-	Call	PZUOFF			; Прямой доступ в ОЗУ
+	Cmp	r0,#HiText	; Памяти для загрузки в ПП хватит ?
+	Bhi	2$		; Нет - выход с ошибкой
+	Call	PZUOFF		; Прямой доступ в ОЗУ
 
-4$:	Mov	(r4),(r1)+		; Копирование в ОЗУ ПП
-	Inc	(r5)
-	Sob	r2,4$
-	Mov	r1,@#EndPtr
-	Clr	r0
+4$:	Mov	(r4),(r1)+	; Копирование в ОЗУ ПП
+	Inc	(r5)		; Следующий адрес ЦП
+	Sob	r2,4$		; Все слова
+	Mov	r1,@#EndPtr	; Конец текста
+	Clr	r0		; R0 = счётчик строк
 
 ;	Подсчет числа строк в подтексте
-	Mov	@#TopPtr,(r5)
-5$:	Tstb	2(r5)
-	Bne	6$
-	Inc	r0
-6$:	Inc	(r5)
-	Cmp	(r5),r1
-	Blos	5$
+	Mov	@#TopPtr,(r5)	; Адрес начала текста
+5$:	Tstb	2(r5)		; Байт 0 (конец строки)?
+	Bne	6$		; Нет
+	Inc	r0		; Да - строк на одну больше
+6$:	Inc	(r5)		; Следующий байт
+	Cmp	(r5),r1		; До конца текста
+	Blos	5$		; Цикл
 ;	Очистка конца
-	Mov	W4,r2
-7$:	Clrb	(r1)+
-	Sob	r2,7$
+	Mov	W4,r2		; Высота окна
+7$:	Clrb	(r1)+		; Обнулить W4 байт после текста
+	Sob	r2,7$		; Цикл
 ;	Запись количества строк в МП линейки скролинга
-	Sub	W4,r0
-	Bhi	8$
-	Clr	r0
-8$:	Mov	r0,EslHlp+6
-	Call	PZUON			; Отключение прямого доступа в ОЗУ
-	Return				; Успешное завершение
+	Sub	W4,r0		; Строк минус высота окна
+	Bhi	8$		; Больше - как есть
+	Clr	r0		; Иначе прокрутка не нужна
+8$:	Mov	r0,EslHlp+6	; Максимум прокрутки в полосе
+	Call	PZUON		; Отключение прямого доступа в ОЗУ
+	Return			; Успешное завершение
 ;______________________________________________________________________________
 
 
-TxtOut:	Color	Black,Cyan
-	Call	ScOut
+TxtOut:	Color	Black,Cyan	; Цвет: чёрный на голубом
+	Call	ScOut		; Вывести строки окна
 BegHt:
-	Flush
-Rel	Mov	#EslHlp,r5
-	Call	ScrBlm
-	
-	Push	@#CurX
-	Inc	(Sp)
-	Push	@#CurY
-	Inc	(Sp)
-	
-	Call	$Wloc
-	Call	TstInv
-	Call	$CurOn
+	Flush			; Очистить очередь клавиш
+Rel	Mov	#EslHlp,r5	; R5 -> описатель полосы EslHlp
+	Call	ScrBlm		; Нарисовать полосу прокрутки
 
-	
-	Emt	22
-	Tst	@#CurTop
-	Beq	1$
-	Call	TWait
-	Call	NamInv
-	
+	Push	@#CurX		; X курсора
+	Inc	(Sp)		; +1 (рамка)
+	Push	@#CurY		; Y курсора
+	Inc	(Sp)		; +1 (рамка)
+
+	Call	$Wloc		; Поставить курсор
+	Call	TstInv		; Ссылка под курсором: подсветить
+	Call	$CurOn		; Включить курсор
+
+
+	Emt	22		; Ждать клавишу (EMT 22)
+	Tst	@#CurTop	; Была подсветка ссылки?
+	Beq	1$		; Нет
+	Call	TWait		; Ждать такт таймера
+	Call	NamInv		; Снять подсветку
+
 1$:
-	Call	$CurOff
-Rel	KeyJmp	#HtJmp
+	Call	$CurOff		; Выключить курсор
+Rel	KeyJmp	#HtJmp		; Обработка клавиши по HtJmp
 
 
 HtDn:
-	Tst	r5
-	Bne	1$
-	Mov	@#CurY,r0
-	Inc	r0
-	Cmp	r0,W4
-	Bhis	1$
-	Inc	@#CurY
-	Br	BegHt
+	Tst	r5		; Модификатор клавиши 0?
+	Bne	1$		; Нет - прокрутка
+	Mov	@#CurY,r0	; CurY
+	Inc	r0		; Следующая строка окна
+	Cmp	r0,W4		; Ещё в окне?
+	Bhis	1$		; Нет - прокрутка
+	Inc	@#CurY		; Курсор вниз
+	Br	BegHt		; Перерисовать курсор
 1$:
-Rel	Mov	#Dn$$,r0
-	Br	CrMv
+Rel	Mov	#Dn$$,r0	; Подпрограмма прокрутки вниз
+	Br	CrMv		; Выполнить
 
 
-Dn$$:	
-	Cmp	@#CurOfs,EslHlp+6
-	Bhis	1$
-	Inc	@#CurOfs
+Dn$$:
+	Cmp	@#CurOfs,EslHlp+6	; Не последняя позиция прокрутки?
+	Bhis	1$		; Нет - дальше
+	Inc	@#CurOfs	; Прокрутка на строку
 	Return
-1$:	Mov	W4,@#CurY
-	Dec	@#CurY
+1$:	Mov	W4,@#CurY	; Иначе курсор - в нижнюю строку
+	Dec	@#CurY		; W4 - 1
 	Return
-	
+
 
 HtUp:
-	Tst	r5
-	Bne	1$
-	Tst	@#CurY
-	Beq	1$
-	Dec	@#CurY
-	Br	BegHt
-	
-1$:	
-Rel	Mov	#Up$$,r0
+	Tst	r5		; Модификатор клавиши 0?
+	Bne	1$		; Нет - прокрутка
+	Tst	@#CurY		; Курсор в верхней строке?
+	Beq	1$		; Да - прокрутка
+	Dec	@#CurY		; Курсор вверх
+	Br	BegHt		; Перерисовать курсор
 
-CrMv:	Mov	#1,r3
-	Cmp	#10,r5
-	Bne	1$
-	Mov	W4,r3
-1$:	Call	(r0)
-	Sob	r3,1$
-	Br	ReSC
+1$:
+Rel	Mov	#Up$$,r0	; Подпрограмма прокрутки вверх
 
-	
-Up$$:	Tst	@#CurOfs
-	Beq	1$
-	Dec	@#CurOfs
+CrMv:	Mov	#1,r3		; Шаг: 1 строка
+	Cmp	#10,r5		; Модификатор 10 (по таблице клавиш)?
+	Bne	1$		; Нет
+	Mov	W4,r3		; Да - на страницу (W4 строк)
+1$:	Call	(r0)		; Выполнить шаг
+	Sob	r3,1$		; Повторить
+	Br	ReSC		; Перерисовать текст
+
+
+Up$$:	Tst	@#CurOfs	; Начало текста?
+	Beq	1$		; Да - дальше
+	Dec	@#CurOfs	; Прокрутка на строку вверх
 	Return
-1$:	Clr	@#CurY
+1$:	Clr	@#CurY		; Иначе курсор - в верхнюю строку
 	Return
-		
 
-ReSc:	Call	ScOut
-	Br	BegHt
+
+ReSc:	Call	ScOut		; Перерисовать окно
+	Br	BegHt		; Продолжить
 
 
 HtLf:
-	Tst	@#CurX
-	Beq	1$
-	Dec	@#CurX
-1$:	Br	BegHt
+	Tst	@#CurX		; Курсор в столбце 0?
+	Beq	1$		; Да
+	Dec	@#CurX		; Влево
+1$:	Br	BegHt		; Продолжить
 
 HtRf:
-	Mov	@#CurX,r0
-	Tst	(r0)+
-	Cmp	r0,W3
-	Bhi	1$
-	Inc	@#CurX
-1$:	Br	BegHt
+	Mov	@#CurX,r0	; CurX
+	Tst	(r0)+		; +2
+	Cmp	r0,W3		; Не шире окна?
+	Bhi	1$		; Нет
+	Inc	@#CurX		; Вправо
+1$:	Br	BegHt		; Продолжить
 
 
 
 HtEs:
-	Call	HlpSav
-	Jmp	HlpEnd
-	
+	Call	HlpSav		; Запомнить позицию
+	Jmp	HlpEnd		; Закрыть файл и окно
+
 HtNt:
-	Mov	@#CurTop,r0
-	Beq	BegHt
-Ts1:	Call	HlpSav
-	Clr	@#CurX
-	Clr	@#CurY
-	Clr	@#CurOfs
-	Jmp	Tsrc
+	Mov	@#CurTop,r0	; Код ссылки под курсором
+	Beq	BegHt		; Нет ссылки - продолжить
+Ts1:	Call	HlpSav		; Запомнить текущую тему
+	Clr	@#CurX		; Курсор в начало
+	Clr	@#CurY		; ...
+	Clr	@#CurOfs	; Прокрутка в начало
+	Jmp	Tsrc		; Открыть тему R0
 
-	
+
 HtF1:
-	Asr	r5
-	Dec	r5
-	Bpl	2$
-	Mov	#100201,r0
-	Br	Ts1
-2$:	Dec	r5
-	Bpl	3$
-	Mov	#100200,r0
-	Br	Ts1
-3$:	Cmp	r5,#2
-	Bne	1$
-	Jmp	H.Prev
+	Asr	r5		; Модификатор клавиши в индекс
+	Dec	r5		; Без модификатора?
+	Bpl	2$		; Нет
+	Mov	#100201,r0	; F1 - тема 100201 (как пользоваться)
+	Br	Ts1		; Открыть
+2$:	Dec	r5		; Shift?
+	Bpl	3$		; Нет
+	Mov	#100200,r0	; Shift-F1 - тема 100200 (оглавление)
+	Br	Ts1		; Открыть
+3$:	Cmp	r5,#2		; Alt?
+	Bne	1$		; Нет - игнорировать
+	Jmp	H.Prev		; Alt-F1 - предыдущая тема
 
 
-1$:	Jmp	BegHt
+1$:	Jmp	BegHt		; Продолжить
 
 
 HlpSav:
-	Mov	LhPtr,r5
-	Cmp	r5,#12360
-	Blo	2$
-	Sub	#6,r5
-	Mov	#12200,r4
-1$:	Mov	6(r4),(r4)+
-	Cmp	r4,r5
-	Blo	1$
-2$:	Mov	nHelp,(r5)+
-	Movb	@#CurX,(r5)+
-	Movb	@#CurY,(r5)+
-	Mov	@#CurOfs,(r5)+
-	Mov	r5,LhPtr
-	Return
+	Mov	LhPtr,r5	; R5 -> конец истории
+	Cmp	r5,#12360	; Место есть (12360 - предел)?
+	Blo	2$		; Да
+	Sub	#6,r5		; Нет - сдвинуть историю: R5 -> последняя запись
+	Mov	#12200,r4	; R4 -> начало истории
+1$:	Mov	6(r4),(r4)+	; Сдвинуть на запись (6 байт)
+	Cmp	r4,r5		; До R5
+	Blo	1$		; Цикл
+2$:	Mov	nHelp,(r5)+	; Код темы
+	Movb	@#CurX,(r5)+	; CurX
+	Movb	@#CurY,(r5)+	; CurY
+	Mov	@#CurOfs,(r5)+	; CurOfs
+	Mov	r5,LhPtr	; Новый конец истории
+	Return			; Возврат
 
 
 
 
 
 
+;------------------------------------------------------------------------------
+; NhConv - внешний номер nHelp в внутренний код (100200 + мл. байт + 2*ст.)
+;------------------------------------------------------------------------------
 NhConv:
-	Mov	nHelp,r0
-	Mov	r0,r1
-	Bic	#177400,r1
-	Asl	r0
-	Clrb	r0
-	Bis	r1,r0
-	Bis	#100200,r0
-	Mov	r0,nHelp
-	Return
-	
+	Mov	nHelp,r0	; R0 = внешний номер
+	Mov	r0,r1		; Копия
+	Bic	#177400,r1	; R1 = младший байт
+	Asl	r0		; Старший байт, удвоенный
+	Clrb	r0		; Младший байт чист
+	Bis	r1,r0		; Добавить R1
+	Bis	#100200,r0	; Признак внутреннего кода
+	Mov	r0,nHelp	; Внутренний код
+	Return			; Возврат
+
 
 HlpEnd:
-	Movb	#1,FFFF
-	Call	$$DsCl
-	Wclose
-	Return
-	
+	Movb	#1,FFFF		; Код 1: закрыть файл
+	Call	$$DsCl		; Выполнить
+	Wclose			; Закрыть окно
+	Return			; Возврат
 
+
+;------------------------------------------------------------------------------
+; HlpOpn - окно HelpW, открыть файл Turbo.Hlp, подготовить полосу и позицию
+;------------------------------------------------------------------------------
 HlpOpn:
-Rel	Window	#HelpW
-Rel	Mov	#HName,r1
+Rel	Window	#HelpW		; Окно помощи HelpW
+Rel	Mov	#HName,r1	; R1 -> имя файла помощи
 
-	Call	$Ncopy
-	Movb	#9.,ffff
-	Call	$$DsCl
-	Bne	$1
-Rel	Mov	#EslHlp,r5
-	Mov	r5,r0
-	Inc	r0
-	Mov	W1,r1
-	Add	W3,r1
-	Inc	r1
-	Movb	r1,(r0)+
-	Movb	W2,(r0)
-	Incb	(r0)+
-	Movb	W4,(r0)
-	Decb	(r0)
-	Decb	(r0)+
-	Call	ScrBlp
-	Mov	#StrLen,r5
-	Mov	W4,r4
-1$:	Movb	W3,(r5)+
-	Sob	r4,1$
-	Clr	@#CurX
-	Clr	@#CurY
-	Clr	@#CurOfs
-	Return
+	Call	$Ncopy		; Имя в ЦП
+	Movb	#9.,ffff	; Код 9.: открыть файл
+	Call	$$DsCl		; Выполнить
+	Bne	$1		; Ошибка - выход
+Rel	Mov	#EslHlp,r5	; R5 -> описатель полосы
+	Mov	r5,r0		; R0 -> его байты
+	Inc	r0		; Позиция X полосы
+	Mov	W1,r1		; X окна
+	Add	W3,r1		; + ширина
+	Inc	r1		; +1 (рамка)
+	Movb	r1,(r0)+	; Позиция X
+	Movb	W2,(r0)		; Y окна
+	Incb	(r0)+		; +1
+	Movb	W4,(r0)		; Высота окна
+	Decb	(r0)		; -1
+	Decb	(r0)+		; -1
+	Call	ScrBlp		; Подготовить полосу
+	Mov	#StrLen,r5	; R5 -> StrLen
+	Mov	W4,r4		; R4 = число строк окна
+1$:	Movb	W3,(r5)+	; Длина строки = ширина окна
+	Sob	r4,1$		; Цикл
+	Clr	@#CurX		; CurX = 0
+	Clr	@#CurY		; CurY = 0
+	Clr	@#CurOfs	; CurOfs = 0
+	Return			; C = 0 - успех
 
-$1:	Sec
-	Return
+$1:	Sec			; C = 1 - ошибка
+	Return			; Возврат
 
 
-ReadHd:	Clr	Fblk
-	Mov	#4000,Flen
-	Movb	#2,FFFF
-	Call	C1Call
-	Return
-	
+; ReadHd - прочитать заголовок файла (блок 0, 4000 слов восьм.)
+ReadHd:	Clr	Fblk		; Блок 0
+	Mov	#4000,Flen	; 4000 слов (восьм.)
+	Movb	#2,FFFF		; Код 2: чтение
+	Call	C1Call		; Выполнить
+	Return			; Возврат
+
+;------------------------------------------------------------------------------
+; ScOut - вывести строки окна с CurOfs: адреса строк - в StrPtr, текст - Lcpy
+;------------------------------------------------------------------------------
 ScOut:
-	Clr	r3
-	Mov	#177010,r5
-	Mov	@#CurOfs,r0
-	Call	GtPtr
-	Mov	#StrPtr,r2
-	Br	2$
-1$:	Mov	(r5),(r2)+
-	Call	Lcpy
-	Inc	(r5)
-	Push	<#1,r3>
-	Call	$Wloc
-	Push	(r5)
-	Print	#Lbuf
-	Pop	(r5)
-2$:	Inc	r3
-	Cmp	r3,W4
-	Blos	1$
-	Return
-	
-	
+	Clr	r3		; Номер строки окна
+	Mov	#177010,r5	; Регистр адреса окна ПП
+	Mov	@#CurOfs,r0	; Первая строка
+	Call	GtPtr		; R5 = адрес первой строки в ПП
+	Mov	#StrPtr,r2	; R2 -> таблица адресов StrPtr
+	Br	2$		; К проверке
+1$:	Mov	(r5),(r2)+	; Адрес строки в таблицу
+	Call	Lcpy		; Строка в Lbuf
+	Inc	(r5)		; Следующий адрес
+	Push	<#1,r3>		; Курсор: X = 1, Y = строка
+	Call	$Wloc		; Установить
+	Push	(r5)		; Запомнить адрес
+	Print	#Lbuf		; Вывести строку
+	Pop	(r5)		; Вернуть адрес
+2$:	Inc	r3		; Следующая строка
+	Cmp	r3,W4		; Все строки окна?
+	Blos	1$		; Нет - выводить
+	Return			; Возврат
 
 
 
 
+
+
+;------------------------------------------------------------------------------
+; Lcpy - строка из ПП в Lbuf: управляющие коды - в пробелы, метки 35/36 - в
+; последовательности ESC для выделения; добить пробелами до прежней длины StrLen
+;------------------------------------------------------------------------------
 Lcpy:
-	
-	Mov	#Lbuf,r0
-	Clr	r1
-1$:	Movb	2(r5),(r0)
-	Beq	2$
-	Cmpb	(r0),#40
-	bhis	3$
-	Cmpb	(r0),#35
-	Bhis	5$
-	Movb	#40,(r0)
-3$:	Inc	r1
-	Inc	r0
-7$:	Inc	(r5)
-	Br	1$
 
-2$:	Movb	StrLen(r3),r4
-	Movb	r1,StrLen(r3)
-8$:	Movb	#40,(r0)+
-	Inc	r1
-	Cmp	r1,r4
-	Blo	8$
-	Clrb	(r0)+
-	Return
+	Mov	#Lbuf,r0	; R0 -> Lbuf
+	Clr	r1		; R1 = число символов
+1$:	Movb	2(r5),(r0)	; Байт текста
+	Beq	2$		; Конец строки - выход
+	Cmpb	(r0),#40	; Печатный?
+	bhis	3$		; Да
+	Cmpb	(r0),#35	; 35, 36?
+	Bhis	5$		; Да - метки ссылки
+	Movb	#40,(r0)	; Прочие управляющие - в пробел
+3$:	Inc	r1		; Считать символ
+	Inc	r0		; Следующий
+7$:	Inc	(r5)		; Следующий байт текста
+	Br	1$		; Цикл
 
-5$:	Bne	6$
-	Inc	(r5)
-	Inc	(r5)
-	Movb	#33,(r0)+
-	Movb	#240,(r0)+
-	Movb	#67,(r0)+
-	Br	7$
+2$:	Movb	StrLen(r3),r4	; Прежняя длина строки
+	Movb	r1,StrLen(r3)	; Новая длина
+8$:	Movb	#40,(r0)+	; Дополнить пробелами
+	Inc	r1		; Счётчик
+	Cmp	r1,r4		; До прежней длины
+	Blo	8$		; Цикл
+	Clrb	(r0)+		; Нуль в конце
+	Return			; Возврат
 
-6$:	Movb	#33,(r0)+
-	Movb	#277,(r0)+
-	Movb	#240,(r0)+
-	Br	7$
+5$:	Bne	6$		; 36?
+	Inc	(r5)		; 35: пропустить 2 байта кода
+	Inc	(r5)		; ...
+	Movb	#33,(r0)+	; ESC 240 67 - начало выделения ссылки
+	Movb	#240,(r0)+	; (смысл кодов не выяснен)
+	Movb	#67,(r0)+	; ...
+	Br	7$		; Дальше
 
+6$:	Movb	#33,(r0)+	; ESC 277 240 - конец выделения ссылки
+	Movb	#277,(r0)+	; (смысл кодов не выяснен)
+	Movb	#240,(r0)+	; ...
+	Br	7$		; Дальше
+
+;------------------------------------------------------------------------------
+; LGBut - таблица ссылок строки в BtArea: по 6 байт (начало, конец, код темы)
+;------------------------------------------------------------------------------
 LGBut:
-	Mov	#177012,r1
-	Clr	r0
-	Mov	#BtArea,r4
-1$:	Tstb	2(r5)
-	Beq	6$
-	Cmpb	#35,(r1)
-	Bne	5$
-	Mov	r0,(r4)+
-	Inc	(r5)
-	Tst	(r4)+
-	Movb	(r1),(r4)+
-	Inc	(r5)
-	Movb	(r1),(r4)+
-	Br	7$
-5$:	Cmpb	#36,(r1)
-	Bne	8$
-	Mov	r0,-4(r4)
-	Br	7$
+	Mov	#177012,r1	; Регистр байта окна
+	Clr	r0		; R0 = текущий столбец
+	Mov	#BtArea,r4	; R4 -> таблица ссылок
+1$:	Tstb	2(r5)		; Конец строки?
+	Beq	6$		; Да
+	Cmpb	#35,(r1)	; Метка 35?
+	Bne	5$		; Нет
+	Mov	r0,(r4)+	; Столбец начала
+	Inc	(r5)		; Следующий байт
+	Tst	(r4)+		; Пропустить слово (конец)
+	Movb	(r1),(r4)+	; Код темы: младший
+	Inc	(r5)		; Следующий байт
+	Movb	(r1),(r4)+	; старший
+	Br	7$		; Дальше
+5$:	Cmpb	#36,(r1)	; Метка 36?
+	Bne	8$		; Нет - обычный символ
+	Mov	r0,-4(r4)	; Столбец конца в запись
+	Br	7$		; Дальше
 
-	
-8$:	Inc	r0
-7$:	Inc	(r5)
-	Br	1$
-	
-	
-	
-6$:	Mov	#-1,(r4)
-	Return
-	
+
+8$:	Inc	r0		; Следующий столбец
+7$:	Inc	(r5)		; Следующий байт
+	Br	1$		; Цикл
 
 
 
+6$:	Mov	#-1,(r4)	; Конец таблицы: -1
+	Return			; Возврат
+
+
+
+
+;------------------------------------------------------------------------------
+; TstInv - подсветить ссылку под курсором (CurTop = её код, 0 - нет ссылки)
+;------------------------------------------------------------------------------
 TstInv:
-	Mov	#177010,r5
-	Push	r0
-	Mov	@#CurY,r3
-	Asl	r3
-	Mov	StrPtr(r3),(r5)
-	Asr	r3
-	Inc	r3
+	Mov	#177010,r5	; Регистр адреса окна
+	Push	r0		; Сохранить R0
+	Mov	@#CurY,r3	; Строка курсора
+	Asl	r3		; Индекс в таблице слов
+	Mov	StrPtr(r3),(r5)	; Адрес строки
+	Asr	r3		; Обратно
+	Inc	r3		; Номер строки
 
-	Call	LGBut
-	Mov	#BtArea,r4
-6$:	Tst	(r4)
-	Bmi	4$
-	Cmp	@#CurX,(r4)
-	Blo	5$
-	Cmp	@#CurX,2(r4)
-	Blo	7$
-5$:	Add	#6,r4
-	Br	6$
-7$:	Call	NamInv
-	Mov	4(r4),@#CurTop
-3$:	Pop	r0
-	Return
-4$:	Clr	@#CurTop
-	Br	3$
+	Call	LGBut		; Построить таблицу ссылок строки
+	Mov	#BtArea,r4	; R4 -> таблица
+6$:	Tst	(r4)		; Конец таблицы?
+	Bmi	4$		; Да - ссылки нет
+	Cmp	@#CurX,(r4)	; Левее начала?
+	Blo	5$		; Да - дальше
+	Cmp	@#CurX,2(r4)	; Левее конца?
+	Blo	7$		; Да - курсор на ссылке
+5$:	Add	#6,r4		; Следующая запись
+	Br	6$		; Цикл
+7$:	Call	NamInv		; Подсветить ссылку
+	Mov	4(r4),@#CurTop	; Код темы
+3$:	Pop	r0		; Восстановить R0
+	Return			; Возврат
+4$:	Clr	@#CurTop	; Нет ссылки
+	Br	3$		; Выход
 
 
-NamInv:	Call	$Push
-	Add	W2,r3
-	Mov	(r4)+,r1
-	Mov	r1,r2
-	Sub	(r4)+,r2
-	Neg	r2
-	Add	W1,r1
-	Inc	r1
-	Mov	#313,$$$1
-	Call	$Inv
-	Mov	#5113,$$$1
-	Call	$Pop
-	Return
-	
-	
+NamInv:	Call	$Push		; Запомнить состояние
+	Add	W2,r3		; Строка + Y окна
+	Mov	(r4)+,r1	; R1 = начало
+	Mov	r1,r2		; R2 = конец
+	Sub	(r4)+,r2	; - начало
+	Neg	r2		; R2 = длина
+	Add	W1,r1		; + X окна
+	Inc	r1		; +1
+	Mov	#313,$$$1	; Режим подсветки в $Inv
+	Call	$Inv		; Инвертировать
+	Mov	#5113,$$$1	; Исходное слово в $Inv
+	Call	$Pop		; Восстановить состояние
+	Return			; Возврат
 
+
+
+; GtPtr - R5 -> строка с номером R0 в тексте темы
 GtPtr:
-	Mov	r5,r4
-	Tst	(r4)+
-	Mov	@#TopPtr,(r5)
-	Tst	r0
-	Beq	4$
-3$:	Inc	(r5)
-	Tstb	(r4)
-	Bne	3$
-2$:	Dec	r0
-	Bne	3$
-	Inc	(r5)
-4$:	Return
-
-	
+	Mov	r5,r4		; R4 -> слово после адреса
+	Tst	(r4)+		; (пропустить)
+	Mov	@#TopPtr,(r5)	; Адрес начала текста
+	Tst	r0		; Строка 0?
+	Beq	4$		; Да - готово
+3$:	Inc	(r5)		; Следующий байт
+	Tstb	(r4)		; Конец строки?
+	Bne	3$		; Нет
+2$:	Dec	r0		; Следующая строка
+	Bne	3$		; Ещё нужна?
+	Inc	(r5)		; Первый байт строки
+4$:	Return			; Возврат
 
 
+
+
+; HtJmp - клавиши: вверх, вниз, вправо, влево, Esc, Enter, F1
 .Psect	Data
 
 
 HtJmp:
-	.Byte	7,Up,Down,Right,Left,Escape,Enter,Fk1
-Rel	.Word	<HtUp,Htdn,HtRf,HtLf,HtEs,HtNt,HtF1,BegHt>
+	.Byte	7,Up,Down,Right,Left,Escape,Enter,Fk1	; Число клавиш, клавиши
+Rel	.Word	<HtUp,Htdn,HtRf,HtLf,HtEs,HtNt,HtF1,BegHt>	; Обработчики
 
-Eslhlp::.Byte	1,0,0,0
-	.Word	CurOfs
-	.Word	0,0
+Eslhlp::.Byte	1,0,0,0		; Описатель полосы прокрутки (байты: 1, 0, 0, 0)
+	.Word	CurOfs		; Текущее положение (адрес CurOfs)
+	.Word	0,0		; Максимум (EslHlp+6)
 
 
-HName::	.Asciz	/???:Turbo.Hlp/
+HName::	.Asciz	/???:Turbo.Hlp/	; Файл помощи (??? - не выяснено)
 .Even
 
 

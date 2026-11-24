@@ -1,21 +1,32 @@
 ﻿
+;------------------------------------------------------------------------------
+; XLINK (Tlink) - упаковщик Turbo.Sav (RT-11): берёт первые 1000 слов Start.Sav
+; (загрузчик и таблица оверлеев с адреса 1400), затем части из Itab (Ide.Sav,
+; Basic.Sav): читает файл целиком, в запись таблицы пишет адрес (слово 40),
+; длину в словах ((слово 50 - слово 40) / 2 + 1) и номер блока, шифрует образ
+; Crypt и записывает с этого блока. Блоки 0-1 - загрузчик, затем части подряд.
+; Таблицу шифрует Crypt (200 слов), как ждёт START.MAC. Загрузчик не
+; шифруется (закомментированные вызовы Crypt). Размер частей ограничен памятью
+;------------------------------------------------------------------------------
 	.Mcall	.LookUp .ReadW .Enter .WritW .Close .Print
 	.Mcall	.Exit .CsiSpc .Settop
 
 
 
 Start:
-	.Settop	#-1
+	.Settop	#-1		; Взять всю память
+				; Создать Turbo.Sav: канал 0, наибольшая область
 	.Enter	#Area,#0,#OutPut,#-1
-	Bcs	6$
+	Bcs	6$		; Ошибка => IoError (через 6$)
 
-	Mov	#Itab,r5
+	Mov	#Itab,r5	; R5 -> таблица входных файлов Itab
 
-	.Lookup	#Area,#1,(r5)+
-	Bcs	3$
+	.Lookup	#Area,#1,(r5)+	; Открыть Start.Sav на канале 1
+	Bcs	3$		; Ошибка
+				; Прочитать 1000 слов (2 блока) в SysBuffer
 	.ReadW	#Area,#1,#SysBuffer,#1000,#0
-	Bcs	3$
-	.Close	#1
+	Bcs	3$		; Ошибка
+	.Close	#1		; Закрыть канал 1
 ;	Mov	#SysBuffer,r2
 ;	Mov	#400,r3
 ;	Call	Crypt
@@ -23,86 +34,91 @@ Start:
 ;	Mov	#400,r1
 ;1$:	Clrb	(r0)+
 ;	Sob	r1,1$
-	Mov	#SysBuffer+1400,r4
-	Mov	#2,r3
+	Mov	#SysBuffer+1400,r4	; R4 -> таблица оверлеев (адрес 1400)
+	Mov	#2,r3		; R3 = 2: первый свободный блок выхода
 
-2$:	Mov	(r5)+,r1
-	Beq	Exit
-	.LookUp	#area,#1,r1
-6$:	Bcs	3$
+2$:	Mov	(r5)+,r1	; R1 -> имя следующей части
+	Beq	Exit		; Конец списка => завершение
+	.LookUp	#area,#1,r1	; Открыть часть на канале 1
+6$:	Bcs	3$		; Ошибка (общий выход 3$)
 
-	Mov	r0,r1
-	Ash	#8.,r1
+	Mov	r0,r1		; R1 = длина файла в блоках
+	Ash	#8.,r1		; R1 = длина в словах
+				; Прочитать всю часть в StartBuffer
 	.ReadW	#Area,#1,#StartBuffer,r1,#0
-	Bcs	3$
-	.Close	#1
-	Mov	StartBuffer+40,(r4)
-	Mov	StartBuffer+50,2(r4)
-	Sub	(r4),2(r4)
-	Asr	2(r4)
-	Inc	2(r4)
-	Mov	r3,4(r4)
-	Mov	(r4),r1
-	Add	#StartBuffer,r1
-	Push	r3
-	Mov	r1,r2
-	Mov	2(r4),r3
-	
-	Call	Crypt
-	Pop	r3
-	
-	.WritW	#Area,#0,r1,2(r4),r3
-3$:	Bcs	IoError
-	Mov	2(r4),r1
-	Ash	#-8.,r1
-	Inc	r1
-	Add	r1,r3
-	Add	#6,r4
-	Br	2$
+	Bcs	3$		; Ошибка
+	.Close	#1		; Закрыть канал 1
+	Mov	StartBuffer+40,(r4)	; Адрес = слово 40 части (старт)
+	Mov	StartBuffer+50,2(r4)	; Слово 50 части (верхняя граница)
+	Sub	(r4),2(r4)	; Минус старт
+	Asr	2(r4)		; В словах
+	Inc	2(r4)		; Плюс 1: длина в словах
+	Mov	r3,4(r4)	; Номер блока в Turbo.Sav
+	Mov	(r4),r1		; R1 = старт
+	Add	#StartBuffer,r1	; Плюс StartBuffer: образ в буфере
+	Push	r3		; Запомнить номер блока
+	Mov	r1,r2		; R2 = адрес данных
+	Mov	2(r4),r3	; R3 = длина в словах
+
+	Call	Crypt		; Зашифровать часть
+	Pop	r3		; Вернуть номер блока
+
+	.WritW	#Area,#0,r1,2(r4),r3	; Записать часть в блок R3 выхода
+3$:	Bcs	IoError		; Ошибка => IoError
+	Mov	2(r4),r1	; R1 = длина в словах
+	Ash	#-8.,r1		; Блоков = длина / 256.
+	Inc	r1		; Плюс 1
+	Add	r1,r3		; Следующий свободный блок
+	Add	#6,r4		; Следующая запись таблицы
+	Br	2$		; Следующая часть
 Exit:
 ;	Mov	#SysBuffer+1000,r2
 ;	Mov	#200,r3
 ;	Call	Crypt
-	Mov	#SysBuffer+1400,r2
-	Mov	#200,r3
-	Call	Crypt
-	
-	
+	Mov	#SysBuffer+1400,r2	; R2 -> таблица оверлеев
+	Mov	#200,r3		; 200 слов
+	Call	Crypt		; Зашифровать таблицу
+
+
+				; Записать загрузчик с таблицей (блоки 0-1)
 	.WritW	#Area,#0,#SysBuffer,#1000,#0
-	.Close	#0
-	.Exit
+	.Close	#0		; Закрыть выходной файл
+	.Exit			; Выход в RT-11
 
 IoError:
-	.Print	#Ierror
-	.Exit
+	.Print	#Ierror		; Сообщение об ошибке
+	.Exit			; Выход в RT-11
 
 
+;------------------------------------------------------------------------------
+; Crypt - потоковый шифр (тот же, что в START.MAC): R2 -> данные, R3 = слов
+;------------------------------------------------------------------------------
 Crypt:
-	Push	r0
+	Push	r0		; Сохранить регистры
 	Push	r1
 	Push	r4
 	Push	r5
-	Mov	#40,r4
-	Mov	#^rOWG,r0
-	Mov	#^rELJ,r1
-1$:	Call	GetRand
-	Xor	r0,(r2)+
-	Sob	r3,1$
-	Pop	r5
+	Mov	#40,r4		; R4 = 40: бит обратной связи
+	Mov	#^rOWG,r0	; R0:R1 - начальное значение ключа
+	Mov	#^rELJ,r1	; (Radix-50: OWG, ELJ)
+1$:	Call	GetRand		; Следующее значение ключа
+	Xor	r0,(r2)+	; Слово данных XOR R0
+	Sob	r3,1$		; Все слова
+	Pop	r5		; Вернуть регистры
 	Pop	r4
 	Pop	r1
 	Pop	r0
-	Return
-	
-		
+	Return			; Возврат
+
+
+; GetRand - следующее значение ключа (R0:R1)
 GetRand:
 ;	Mov	#1,r5
-2$:	Ashc	#1,r0
-	Bvc	1$
- 	Bis	r4,r1
+2$:	Ashc	#1,r0		; Сдвинуть R0:R1 влево на 1
+	Bvc	1$		; Знак не менялся (V = 0) =>
+	Bis	r4,r1		; Иначе бит 5 в R1
 1$:;	Sob	r5,2$
-	Return
-		
+	Return			; Возврат
 
 
 
@@ -111,24 +127,26 @@ GetRand:
 
 
 
-Itab:	
-	i1
+
+; Itab - слова: адреса имён входных файлов (Radix-50), 0 - конец
+Itab:
+	i1			; Start.Sav (загрузчик)
 ;	i2
-	i3
-	i4
-	
-	0
+	i3			; Ide.Sav
+	i4			; Basic.Sav
 
-I1:	.rad50	/dk Start Sav/
-I2:	.rad50	/dk OutScrSav/
-I3:	.rad50	/dk Ide   Sav/
-I4:	.rad50	/dk Basic Sav/
+	0			; Конец списка
+
+I1:	.rad50	/dk Start Sav/	; Загрузчик (START.MAC)
+I2:	.rad50	/dk OutScrSav/	; Не используется (строка Itab закомментирована)
+I3:	.rad50	/dk Ide   Sav/	; Часть IDE
+I4:	.rad50	/dk Basic Sav/	; Часть Бейсика
 
 
-OutPut:	.Rad50	/dk Turbo Sav/
-DevExt:	.Rad50	/SavSavSavSav/
+OutPut:	.Rad50	/dk Turbo Sav/	; Выходной файл
+DevExt:	.Rad50	/SavSavSavSav/	; Не используется
 
-Area:
+Area:				; Область аргументов RT-11 (7 слов)
 	.Blkw	7
 
 
@@ -137,6 +155,7 @@ Area:
 
 
 
+; Сообщения (используется только IError; остальные - от Tlink, не нужны)
 Tlinw:	.Ascii	/Tlink-U-/<200>
 NoOutp:	.Asciz	/Can't create output file/
 NoRoom:	.Asciz	/SAV device full/
@@ -147,13 +166,12 @@ InvCom:	.Asciz	/Invalid command/
 
 
 
-SysBuffer	= .
-StartBuffer	= SysBuffer + 2000
-FileBuffer	= StartBuffer + 1000
+SysBuffer	= .		; Буфер: сразу за программой (до конца памяти)
+StartBuffer	= SysBuffer + 2000	; Образ части после загрузчика
+FileBuffer	= StartBuffer + 1000	; Не используется
 
 
-	
-	
+
+
 	.End	Start
-	
-	
+

@@ -1,773 +1,817 @@
-﻿; THE TURBO TEXT EDITOR
+﻿;------------------------------------------------------------------------------
+; EDIT - текстовый редактор IDE (Герасимов, 1995). Окно: 20 строк (ED.Y), 78
+; столбцов (ED.X; сдвиг по горизонтали ROL.HD - "рулон"), первая видимая строка
+; - SL.PTR (её номер ROL.GD), длины видимых строк - SL.LEN. Текст лежит в ОЗУ ПП
+; (UP.PTR..DN.PTR) строками с нулём на конце; текущая строка копируется в LBUF
+; (256 байт, дополнена пробелами) - $LCOP - и возвращается в текст через
+; $LPUT/$LPALL/$LPUTN (текст сдвигается при смене длины, ПЗУ отключается
+; PZUOff). Курсор: LB.PTR - в LBUF, MX.PTR - запомненный столбец. ESW: 1 -
+; резервная копия при записи, 2 - вставка, 4 - автоотступ при Enter, 10 - при
+; забое, 20 - перманентные блоки, 40 - большой курсор, 100 - поиск под курсором,
+; 200 - длинные строки, 400 - замена пробелов (названия - из окна "Редактор",
+; IDDAT2.MAC; действие 20 и 40 не изучено). Главный цикл $EDIT читает клавишу и
+; переходит по EDJMP ($EDS - символ, FKJMP - F1-F10, ALJMP - Alt-буква);
+; перемещения - по таблицам L.REG, R.REG, U.REG, D.REG (модификатор R5: обычный,
+; Shift, Ctrl, GRAF, Alt). Прокрутка рулона ($RHD, ROLDN, ROLUP) работает с
+; системными таблицами строк ПП (формат не выяснен до конца). Поиск - $FND.
+;------------------------------------------------------------------------------
+; THE TURBO TEXT EDITOR
 ; FOR TURBO BASIC IDE
 ; WRITTEN BY GERASIMOV OLEG (C) 1995
 
-.INCLUD /IDE.MLB/
-        Define
-        .RelDef E
+.INCLUD	/IDE.MLB/		; Макробиблиотека IDE
+	Define			; Коды клавиш, цвета, биты окон
+	.RelDef	E		; Макрос REL (релокация)
 
 
 
 
-.PSECT  SYSTEM
+.PSECT	SYSTEM			; Простая часть системы в ПП
 
-$EWP::  MOVB    #377,C.IDEN
-        COLOR   CYAN,BLUE
-        MOV     ROL.HD,R1
-        ADD     #103460+23.,R1
-        MOV     #2630,R0
-        MOV     #<11.*21.>,R2
-5$:     MOV     R1,(R0)+
-        ADD     #81.,R1
-        TST     (R0)+
-        SOB     R2,5$
-        CALL    EDHIDE                          ; ПРОЦЕДУРА РИСОВАНИЯ ОКНА
-        LOC     0,1                             ; РЕДАКТОРА
-        MOV     #TTBUF,R1                       ; ВЕРХНЯЯ СТРОЧКА
-REL     MOV     #UL,R2
-        MOV     #5,R3
-1$:     MOVB    (R2)+,(R1)+
-        SOB     R3,1$
-        MOV     #74.,R3
-2$:     MOVB    #'═,(R1)+
-        SOB     R3,2$
-        MOVB    #'╗,(R1)+
-        CLRB    (R1)+
-REL     MOV     #EFNAM,R0
-        PUSH    R0
-3$:     TSTB    (R0)+
-        BNE     3$
-        SUB     (SP),R0
-        SUB     #80.,R0
-        NEG     R0
-        ASR     R0
-        ADD     #TTBUF-1,R0
-        POP     R2
-        MOVB    #40,(R0)+
-4$:     MOVB    (R2)+,(R0)+
-        BNE     4$
-        MOVB    #40,-(R0)
-        CALL    $PRTZ
-        MOV     #21.,R4
-$$C:    MOV     #TTBUF,R1
-        MOV     (PC)+,(R1)+
-        .BYTE   '║,33
-        MOV     (PC)+,(R1)+
-        .BYTE   207,204
-        CLRB    (R1)+
-        CALL    $PRTZ                           ; СРЕДНИЕ СТРОКИ
-        SOB     R4,$$C
-        LOC     0,22.
-        MOV     #TTBUF,R1
-        Movb    #'╚,(r1)+
-        MOV     #17.,R3
-2$:     Movb    #'═,(r1)+
-        SOB     R3,2$
-        CLRB    (R1)+
-        CALL    $PRTZ
-
-
-        LOC     78.,22.
-        MOV     #'─,R0
-        EMT     42
-        MOV     #'┘,R0
-        EMT     42
+;------------------------------------------------------------------------------
+; $EWP - нарисовать окно редактора (рамка, имя файла, полосы прокрутки, текст)
+;------------------------------------------------------------------------------
+$EWP::	MOVB	#377,C.IDEN	; Курсор IDE (редактор)
+	COLOR	CYAN,BLUE	; Цвет
+	MOV	ROL.HD,R1	; R1 = горизонтальный сдвиг окна
+	ADD	#103460+23.,R1	; Видеоадрес первой строки окна + 23.
+	MOV	#2630,R0	; R0 -> таблица строк окна
+	MOV	#<11.*21.>,R2	; Строк развёртки: 21 строка * 11.
+5$:	MOV	R1,(R0)+	; Видеоадрес строки - в таблицу
+	ADD	#81.,R1		; Следующая строка развёртки
+	TST	(R0)+		; Пропустить слово
+	SOB	R2,5$		; Все строки
+	CALL	EDHIDE		; ПРОЦЕДУРА РИСОВАНИЯ ОКНА
+	LOC	0,1		; РЕДАКТОРА
+	MOV	#TTBUF,R1	; ВЕРХНЯЯ СТРОЧКА
+REL	MOV	#UL,R2		; R2 -> начало рамки UL
+	MOV	#5,R3		; Пять символов
+1$:	MOVB	(R2)+,(R1)+	; Символ рамки - в TTBUF
+	SOB	R3,1$		; Повторить
+	MOV	#74.,R3		; Линий: 74.
+2$:	MOVB	#'═,(R1)+	; Двойная линия
+	SOB	R3,2$		; Повторить
+	MOVB	#'╗,(R1)+	; Правый верхний угол
+	CLRB	(R1)+		; Конец строки
+REL	MOV	#EFNAM,R0	; R0 -> имя файла
+	PUSH	R0		; Запомнить
+3$:	TSTB	(R0)+		; Найти конец имени
+	BNE	3$		; Дальше
+	SUB	(SP),R0		; R0 = длина имени + 1
+	SUB	#80.,R0		; Минус 80.
+	NEG	R0		; Столбцов справа
+	ASR	R0		; Половина: отступ для центровки
+	ADD	#TTBUF-1,R0	; Место в TTBUF
+	POP	R2		; R2 -> имя
+	MOVB	#40,(R0)+	; Пробел перед именем
+4$:	MOVB	(R2)+,(R0)+	; Имя - в рамку
+	BNE	4$		; до нуль-байта
+	MOVB	#40,-(R0)	; Нуль заменить пробелом
+	CALL	$PRTZ		; Вывести верхнюю рамку
+	MOV	#21.,R4		; Средних строк: 21.
+$$C:	MOV	#TTBUF,R1	; R1 -> TTBUF
+	MOV	(PC)+,(R1)+	; Две команды: слово с символами
+	.BYTE	'║,33		; "║" и ESC
+	MOV	(PC)+,(R1)+	; Следующее слово:
+	.BYTE	207,204		; коды 207 и 204
+	CLRB	(R1)+		; Конец строки
+	CALL	$PRTZ		; СРЕДНИЕ СТРОКИ
+	SOB	R4,$$C		; Все строки
+	LOC	0,22.		; Позиция (0, 22.)
+	MOV	#TTBUF,R1	; R1 -> TTBUF
+	Movb	#'╚,(r1)+	; Нижняя рамка: левый угол
+	MOV	#17.,R3		; Линий: 17.
+2$:	Movb	#'═,(r1)+	; Двойная линия
+	SOB	R3,2$		; Повторить
+	CLRB	(R1)+		; Конец строки
+	CALL	$PRTZ		; Вывести
 
 
+	LOC	78.,22.		; Позиция (78., 22.)
+	MOV	#'─,R0		; Знак "─"
+	EMT	42		; Вывести
+	MOV	#'┘,R0		; Знак "┘"
+	EMT	42		; Вывести
 
-REL     MOV     #ESLHOR,R5
-        CALL    SCRBLP
-
-REL     MOV     #ESLVER,R5
-        CALL    SCRBLP
 
 
-1$:     COLOR   YELLOW,BLUE
-        PUSH    ED.Y
-        CLR     ED.Y
-        CALL    $TOUT                           ; ВЫВЕСТИ ТЕКСТ В ОКНО
-        POP     ED.Y
-        CALL    EDSHOW
+REL	MOV	#ESLHOR,R5	; R5 -> полоса горизонтальная
+	CALL	SCRBLP		; Нарисовать
 
-        Loc     0.,23.
-        Color   Black,Cyan
-REL     MOV     #DL2,R1
-        CALL    PR
-        CLRB    C.IDEN
-        CALL    $LCOP
-        RETURN
+REL	MOV	#ESLVER,R5	; R5 -> полоса вертикальная
+	CALL	SCRBLP		; Нарисовать
 
+
+1$:	COLOR	YELLOW,BLUE	; Цвет текста
+	PUSH	ED.Y		; Запомнить ED.Y
+	CLR	ED.Y		; ED.Y = 0
+	CALL	$TOUT		; ВЫВЕСТИ ТЕКСТ В ОКНО
+	POP	ED.Y		; Вернуть ED.Y
+	CALL	EDSHOW		; Показать окно (палитра)
+
+	Loc	0.,23.		; Позиция (0, 23.)
+	Color	Black,Cyan	; Цвет
+REL	MOV	#DL2,R1		; R1 -> строка подсказки
+	CALL	PR		; Вывести
+	CLRB	C.IDEN		; Редактор вернул курсор
+	CALL	$LCOP		; Скопировать строку в LBUF
+	RETURN			; Выход
+
+; TsChn1 - индикатор изменений в рамке: "*" - текст изменён, "═" - нет
 TsChn1:
-        Call    $Push
-        Color   Cyan,Blue
-        Loc     2.,22.
-        Movb    #'*,r0
-        Tstb    ChngId
-        Bne     1$
-        Movb    #'═,r0
-1$:     Emt     42
-        Call    RstCol
-        Call    $Pop
-        Return
+	Call	$Push		; Сохранить регистры
+	Color	Cyan,Blue	; Цвет
+	Loc	2.,22.		; Позиция (2, 22.)
+	Movb	#'*,r0		; Знак "*" (изменён)
+	Tstb	ChngId		; Есть изменения?
+	Bne	1$		; да =>
+	Movb	#'═,r0		; Знак "═"
+1$:	Emt	42		; Вывести
+	Call	RstCol		; Вернуть цвет
+	Call	$Pop		; Вернуть регистры
+	Return			; Выход
 
 
 
 
 
+;------------------------------------------------------------------------------
+; $EDIT - цикл редактора: курсор в пределах окна ($RST), индикаторы, ждать
+; клавишу, перейти по EDJMP (возврат из обработчиков - в $RST)
+;------------------------------------------------------------------------------
 $EDIT::
-        CLR     ED.X                            ; РЕДАКТОР ТЕКСТА
-        CLR     ED.Y
-        CALL    $CURON
-        MOV     #LBUF,LB.PTR
-        CALL    $LCOP
+	CLR	ED.X		; РЕДАКТОР ТЕКСТА
+	CLR	ED.Y		; вверху
+	CALL	$CURON		; Включить курсор
+	MOV	#LBUF,LB.PTR	; Курсор - в начале LBUF
+	CALL	$LCOP		; Скопировать строку в LBUF
 $$RS:
 $RST:
 
 
-        MOV     LB.PTR,R0
-        SUB     #LBUF,R0
-        SUB     ROL.HD,R0
-        CMP     R0,#78.
-        BLO     2$
-        BLT     1$
-        MOV     #77.,R0
-        BR      3$
-1$:     CLR     R0
-3$:     MOV     R0,LB.PTR
-        ADD     ROL.HD,LB.PTR
-        ADD     #LBUF,LB.PTR
+	MOV	LB.PTR,R0	; R0 = положение курсора в LBUF
+	SUB	#LBUF,R0	; Минус начало
+	SUB	ROL.HD,R0	; Минус сдвиг окна = столбец
+	CMP	R0,#78.		; Столбец < 78.?
+	BLO	2$		; да =>
+	BLT	1$		; меньше (отрицательно) =>
+	MOV	#77.,R0		; Последний столбец окна: 77.
+	BR	3$		; Дальше
+1$:	CLR	R0		; Первый столбец
+3$:	MOV	R0,LB.PTR	; Новый указатель
+	ADD	ROL.HD,LB.PTR	; Плюс сдвиг
+	ADD	#LBUF,LB.PTR	; Плюс LBUF
 
 2$:
-        MOV     R0,ED.X
+	MOV	R0,ED.X		; Столбец курсора
 
-        CALL    $C.PRT
-        Call    TsChn1
-REL     MOV     #ESLVER,R5
-        MOV     MX.LIN,6(R5)
-        SUB     #20.,6(R5)
-        CALL    SCRBLM
-        COLOR   YELLOW,BLUE
+	CALL	$C.PRT		; Индикатор: столбец:строка
+	Call	TsChn1		; Индикатор изменений
+REL	MOV	#ESLVER,R5	; R5 -> вертикальная полоса
+	MOV	MX.LIN,6(R5)	; Максимум = число строк
+	SUB	#20.,6(R5)	; минус 20.
+	CALL	SCRBLM		; Бегунок
+	COLOR	YELLOW,BLUE	; Цвет
 
-        CALL    $LC.ED
-        CLRB    C.MOVE
-        EMT     22
-        FLUSH
-REL     PUSH    #$RST
-REL     KEYJMP  #EDJMP
+	CALL	$LC.ED		; Позиция курсора на экране
+	CLRB	C.MOVE		; Курсор не двигать
+	EMT	22		; Клавиша
+	FLUSH			; Сбросить очередь
+REL	PUSH	#$RST		; Обработчики вернутся в $RST
+REL	KEYJMP	#EDJMP		; Переход по клавише (EDJMP)
 
 ;******************************************************************************
 ;       Ввод отображаемого символа
 
-$EDS::  Cmpb    R0,#40                  ; Код символа меньше 40
-        Blo     1$                      ; Да выход
+$EDS::	Cmpb	R0,#40		; Код символа меньше 40
+	Blo	1$		; Да выход
 
-        Cmpb    R0,#FK1                 ; Проверка на функциональные клавиши
-        Blo     3$
-        Cmpb    R0,#FK10
-        Bhi     3$                      ; Если нажата функциональная клавиша
-        Jmp     FKJMP                   ; то переход к обработчику
+	Cmpb	R0,#FK1		; Проверка на функциональные клавиши
+	Blo	3$
+	Cmpb	R0,#FK10
+	Bhi	3$		; Если нажата функциональная клавиша
+	Jmp	FKJMP		; то переход к обработчику
 
-3$:     Cmp     #10,R5                  ; Проверка ALT-регистра
-        Bne     5$                      ; Нет - продолжить
-        Jmp     AlJmp                   ; иначе обработчик комбинаций ALT-<буува>
+3$:	Cmp	#10,R5		; Проверка ALT-регистра
+	Bne	5$		; Нет - продолжить
+	Jmp	AlJmp		; иначе обработчик комбинаций ALT-<буува>
 
-5$:     Cmpb    R0,#'@                  ; Символ буква ?
-        Blo     2$
-        Bis     RSLT,R0                 ; Если буква - привести к нужному регистру
+5$:	Cmpb	R0,#'@		; Символ буква ?
+	Blo	2$
+	Bis	RSLT,R0		; Если буква - привести к нужному регистру
 
-2$:     Call    $INS                    ; Вставить символ в текст
-        Call    $Prtl                   ; Распечаиать конец строки
-        Push    ESW                     ; Сохранение ESW.
-        Bis     #200,ESW
-        Call    $CR.RG                  ; Сдвиг курсора вправо
-        Pop     ESW                     ; Восстановить ESW
-1$:     Return                          ; Выход из процедуры
+2$:	Call	$INS		; Вставить символ в текст
+	Call	$Prtl		; Распечаиать конец строки
+	Push	ESW		; Сохранение ESW.
+	Bis	#200,ESW
+	Call	$CR.RG		; Сдвиг курсора вправо
+	Pop	ESW		; Восстановить ESW
+1$:	Return			; Выход из процедуры
 
 ;******************************************************************************
 ;       Переключение русского регистра
 
-$EdRs:: Mov     #200,R0                 ; Доплнение для кода символа
-        Br      $101                    ;
+$EdRs::	Mov	#200,R0		; Доплнение для кода символа
+	Br	$101		;
 
 ;******************************************************************************
 ;       Переключение латинского регистра
 
-$EdLt:: Clr     R0                      ; Очистить дополнение кода символа
+$EdLt::	Clr	R0		; Очистить дополнение кода символа
 
-$101:   Cmp     R0,RsLt                 ; Регистр не изменился
-        Beq     1$                      ; Да - выход
-        Mov     R0,RsLt                 ; Иначе обновить переменные
-        Swab    @#7220                  ; Системные переменные
-        Swab    @#7222
-1$:     Return
+$101:	Cmp	R0,RsLt		; Регистр не изменился
+	Beq	1$		; Да - выход
+	Mov	R0,RsLt		; Иначе обновить переменные
+	Swab	@#7220		; Системные переменные
+	Swab	@#7222		; системных ячеек
+1$:	Return			; Выход
 
 ;****************** ЗАБОЙ *******************
 
-$EDDL:: IF      LB.PTR = #LBUF THEN 11$
-        BIT     #10,ESW
-        BEQ     4$
-        MOV     LB.PTR,R4
-2$:     IF      -(R4) = #40 THEN 2$ (B)
-        IF      R4 }= #LBUF THEN 4$
-        SUB     LB.PTR,R4
-        MOV     R4,$DC+2
-        CALL    $DEL
-        MOV     #LBUF,LB.PTR
-        CLR     ED.X
-        BR      5$
-4$:     CALL    $DEL
-        CALL    $CR.LF
-5$:     MOV     LB.PTR,R4
-        CALL    $LC.ED
-        COLOR   YELLOW,BLUE
-        CALL    $PRTL
-        JMP     $11
+$EDDL::	IF	LB.PTR = #LBUF THEN 11$	; Курсор в начале строки?
+	BIT	#10,ESW		; Автоотступ при забое (ESW бит 10)?
+	BEQ	4$		; нет =>
+	MOV	LB.PTR,R4	; R4 -> курсор
+2$:	IF	-(R4) = #40 THEN 2$ (B)	; Назад по пробелам
+	IF	R4 }= #LBUF THEN 4$	; Слева есть текст => обычный забой
+	SUB	LB.PTR,R4	; R4 = - число пробелов слева
+	MOV	R4,$DC+2	; Столько символов удалить
+	CALL	$DEL		; Удалить
+	MOV	#LBUF,LB.PTR	; Курсор - в начало
+	CLR	ED.X		; Столбец 0
+	BR	5$		; Дальше
+4$:	CALL	$DEL		; Удалить символ
+	CALL	$CR.LF		; Курсор влево
+5$:	MOV	LB.PTR,R4	; R4 -> курсор
+	CALL	$LC.ED		; Курсор на экране
+	COLOR	YELLOW,BLUE	; Цвет
+	CALL	$PRTL		; Перерисовать конец строки
+	JMP	$11		; Дальше
 
-11$:    CALL    $LPALL
-        PUSH    R3
-        CALL    $CR.UP
-        POP     R5
-        BCS     10$
-        CALL    TSTMXL
-        BHIS    10$
-        DEC     MX.LIN
-        MOV     R3,LB.PTR
-        INC     ED.Y
-        CALL    $GETLP
-        MOV     #177010,R5
-        MOV     R0,(R5)
+11$:	CALL	$LPALL		; В начале: сохранить строку
+	PUSH	R3		; Запомнить R3
+	CALL	$CR.UP		; Вверх
+	POP	R5		; Вернуть в R5
+	BCS	10$		; нет верхней строки =>
+	CALL	TSTMXL		; Строк не больше?
+	BHIS	10$		; выход
+	DEC	MX.LIN		; Строк - 1
+	MOV	R3,LB.PTR	; Курсор в конец верхней строки
+	INC	ED.Y		; Строка ниже
+	CALL	$GETLP		; R0 -> начало строки
+	MOV	#177010,R5	; R5 -> регистр адреса
+	MOV	R0,(R5)		; Адрес в окно
 
-9$:     MOVB    2(R5),(R3)+
-        BEQ     7$
-        INC     (R5)
-        IF      R3 {} #LBUF+400 THEN 9$
-7$:     MOVB    #40,-(R3)
-        CLR     R2
-        CALL    $LPUTN
-        DEC     ED.Y
-        CALL    $LPALL
-        CALL    $TOUT
-        CALL    $LCOP
-10$:    RETURN
+9$:	MOVB	2(R5),(R3)+	; Байт строки - в LBUF
+	BEQ	7$		; нуль =>
+	INC	(R5)		; Следующий адрес
+	IF	R3 {} #LBUF+400 THEN 9$	; до конца LBUF
+7$:	MOVB	#40,-(R3)	; Нуль - пробелом
+	CLR	R2		; R2 = 0
+	CALL	$LPUTN		; Записать склеенную строку
+	DEC	ED.Y		; Строка выше
+	CALL	$LPALL		; Сохранить строку
+	CALL	$TOUT		; Вывести текст
+	CALL	$LCOP		; Скопировать строку
+10$:	RETURN			; Выход
 
 ;***************** ВЛЕВО ********************
 $EDL::
-REL     JMP     @L.REG(R5)
+REL	JMP	@L.REG(R5)	; По таблице L.REG (модификатор R5)
 
-$CR.LF: Cmp     LB.PTR,#LBUF
-        Beq     $4
-        Dec     LB.PTR
-        Dec     ED.X
-        Bpl     $11
-        Inc     Ed.X
-        Dec     ROL.HD
-        Call    $GETS
-        Call    $RHD
-        Br      $11
+$CR.LF:	Cmp	LB.PTR,#LBUF	; Курсор в начале LBUF?
+	Beq	$4		; да =>
+	Dec	LB.PTR		; Курсор влево
+	Dec	ED.X		; Столбец - 1
+	Bpl	$11		; Внутри окна => готово
+	Inc	Ed.X		; Столбец 0
+	Dec	ROL.HD		; Окно влево на столбец
+	Call	$GETS		; Пересчитать видимые строки
+	Call	$RHD		; Перерисовать окно (рулон)
+	Br	$11		; Готово
 
-$CR.LD: IF      LB.PTR } #LBUF THEN $1
-$4:     BIT     #200,ESW
-        BNE     $11
-        CALL    $CR.UP
-        Bcs     $11
-        MOV     R3,LB.PTR
-        BR      $11
+$CR.LD:	IF	LB.PTR } #LBUF THEN $1	; Не в начале LBUF => к началу
+$4:	BIT	#200,ESW	; Режим 200 (без перехода)?
+	BNE	$11		; да =>
+	CALL	$CR.UP		; На строку выше
+	Bcs	$11		; нет строки =>
+	MOV	R3,LB.PTR	; Курсор - в её конец
+	BR	$11		; Готово
 
-$1:     MOV     #LBUF,LB.PTR
-        BR      $11
+$1:	MOV	#LBUF,LB.PTR	; Курсор - в начало
+	BR	$11		; Готово
 
 
 ;***************** ВПРАВО *******************
 $EDR::
-REL     JMP     @R.REG(R5)
+REL	JMP	@R.REG(R5)	; По таблице R.REG (модификатор R5)
 
-$CR.RG: IF      LB.PTR } #LBUF+374 THEN $11
-$9:     INC     LB.PTR
-        IF      ED.X { #77. THEN $2
-        INC     ROL.HD
-        CALL    $GETS
-        CALL    $RHD
-$2:     INC     ED.X
-        MOV     LB.PTR,R0
-        DEC     R0
-$12:    BIT     #200,ESW
-        BNE     $11
-1$:     IF      (R0)+ = #40 THEN 1$ (B)
-        IF      R0 { #LBUF+377 THEN $11
-        CALL    $CR.DN
-        BCS     $13
-        MOV     #LBUF,LB.PTR
+$CR.RG:	IF	LB.PTR } #LBUF+374 THEN $11	; Курсор у конца LBUF?
+$9:	INC	LB.PTR		; Курсор вправо
+	IF	ED.X { #77. THEN $2	; Столбец < 77.?
+	INC	ROL.HD		; Окно вправо
+	CALL	$GETS		; Пересчитать видимые строки
+	CALL	$RHD		; Перерисовать окно
+$2:	INC	ED.X		; Столбец + 1
+	MOV	LB.PTR,R0	; R0 -> курсор
+	DEC	R0		; Символ под курсором
+$12:	BIT	#200,ESW	; Режим 200 (без перехода)?
+	BNE	$11		; да => готово
+1$:	IF	(R0)+ = #40 THEN 1$ (B)	; Пробелы справа?
+	IF	R0 { #LBUF+377 THEN $11	; есть текст =>
+	CALL	$CR.DN		; На строку ниже
+	BCS	$13		; нет строки =>
+	MOV	#LBUF,LB.PTR	; Курсор - в начало
 
-$11:    MOV     LB.PTR,MX.PTR
-        RETURN
+$11:	MOV	LB.PTR,MX.PTR	; MX.PTR = курсор
+	RETURN			; Выход
 
-$13:    DEC     LB.PTR
-        BR      $11
+$13:	DEC	LB.PTR		; Курсор назад
+	BR	$11		; Готово
 ;************ КОНЕЦ СТРОКИ ***************
-$CR.RD: MOV     #LBUF+400,R0
-3$:     IF      -(R0) = #40 THEN 3$ (B)
-        INC     R0
-        CMP     R0,LB.PTR
-        BNE     2$
-        MOV     LB.PTR,R0
-        BR      $12
-2$:     MOV     R0,LB.PTR
-1$:     BR      $11
+$CR.RD:	MOV	#LBUF+400,R0	; R0 -> конец LBUF
+3$:	IF	-(R0) = #40 THEN 3$ (B)	; Назад по пробелам
+	INC	R0		; R0 -> за последним символом
+	CMP	R0,LB.PTR	; Курсор уже там?
+	BNE	2$		; нет =>
+	MOV	LB.PTR,R0	; Курсор там же
+	BR	$12		; К общей части
+2$:	MOV	R0,LB.PTR	; Курсор - в конец текста строки
+1$:	BR	$11		; Готово
 
 ;************* СЛОВО ВЛЕВО ***************
 $CR.LS:
-        CMP     LB.PTR,#LBUF
-        BEQ     $4
-        MOV     LB.PTR,R1
-1$:     MOVB    -(R1),R0
-        CALL    $BTTST
-        BCS     1$
-2$:     MOVB    -(R1),R0
-        CALL    $BTTST
-        BCC     2$
-        INC     R1
-        MOV     R1,LB.PTR
-        BR      $11
+	CMP	LB.PTR,#LBUF	; Курсор в начале LBUF?
+	BEQ	$4		; да =>
+	MOV	LB.PTR,R1	; R1 -> курсор
+1$:	MOVB	-(R1),R0	; Символ слева
+	CALL	$BTTST		; Символ разделитель?
+	BCS	1$		; да => дальше
+2$:	MOVB	-(R1),R0	; Символ слева
+	CALL	$BTTST		; Разделитель?
+	BCC	2$		; нет => дальше
+	INC	R1		; На начало слова
+	MOV	R1,LB.PTR	; Курсор
+	BR	$11		; Готово
 ;************ СЛОВО ВПРАВО ***************
 
 $CR.RS:
-        MOV     LB.PTR,R1
-        MOV     R1,R2
-1$:     MOVB    (R1)+,R0
-        CALL    $BTTST
-        BCC     1$
-2$:     MOVB    (R1)+,R0
-        CALL    $BTTST
-        BCS     2$
-        DEC     R1
-        MOV     R1,LB.PTR
-        CMP     R1,#LBUF+376
-        BLOS    3$
-        BIT     #200,ESW
-        BNE     4$
-        MOV     #LBUF,MX.PTR
-        JMP     $CR.DN
-4$:     MOV     R2,LB.PTR
-3$:     BR      $11
+	MOV	LB.PTR,R1	; R1 -> курсор
+	MOV	R1,R2		; R2 = R1
+1$:	MOVB	(R1)+,R0	; Символ
+	CALL	$BTTST		; Разделитель?
+	BCC	1$		; нет => дальше
+2$:	MOVB	(R1)+,R0	; Символ
+	CALL	$BTTST		; Разделитель?
+	BCS	2$		; да => дальше
+	DEC	R1		; На начало следующего слова
+	MOV	R1,LB.PTR	; Курсор
+	CMP	R1,#LBUF+376	; Не за концом?
+	BLOS	3$		; нет =>
+	BIT	#200,ESW	; Режим 200?
+	BNE	4$		; да =>
+	MOV	#LBUF,MX.PTR	; MX.PTR = начало
+	JMP	$CR.DN		; На строку ниже
+4$:	MOV	R2,LB.PTR	; Вернуть курсор
+3$:	BR	$11		; Готово
 
 $Cr.In:
-        Mov     #40,r0
-        Call    $InAl
-        Jmp     $PrtL
+	Mov	#40,r0		; Пробел
+	Call	$InAl		; Вставить
+	Jmp	$PrtL		; Перерисовать строку
 
 
 $Cr.Dl:
-        Inc     Lb.Ptr
-        Call    $Del
-        Dec     Lb.Ptr
-        Dec     r4
-        Jmp     $PrtL
+	Inc	Lb.Ptr		; Курсор вправо
+	Call	$Del		; Удалить символ
+	Dec	Lb.Ptr		; Курсор влево
+	Dec	r4		; R4 -> курсор
+	Jmp	$PrtL		; Перерисовать
 
 
 
 ;***************** ВВЕРХ ********************
 $EDU::
-REL     JMP     @U.REG(R5)
+REL	JMP	@U.REG(R5)	; По таблице U.REG (модификатор R5)
 
-$CR.UP: CLR     R5
-        CALL    $LPUT
-        IF      ED.Y = #0 THEN 1$
-        DEC     ED.Y
-        BR      $5
-1$:     IF      ROL.GD = #0 THEN $99
-        COM     R5
-REL     MOV     #SL.LEN+19.,R0
-        MOV     #19.,R2
-2$:     MOVB    -(R0),1(R0)
-        SOB     R2,2$
-        Mov     #177010,r1
-        MOV     SL.PTR,(r1)
-        Dec     (r1)
-3$:     Dec     (r1)
-        Tstb    2(r1)
-        Bne     3$
-        Inc     (r1)
-        Mov     (r1),Sl.Ptr
-        DEC     ROL.GD
-REL     MOV     #ROLUP,R0
-        BR      $5
-$99:    SEC
-        RETURN
+$CR.UP:	CLR	R5		; R5 = 0 (рулон не нужен)
+	CALL	$LPUT		; Сохранить строку
+	IF	ED.Y = #0 THEN 1$	; Строка 0 окна?
+	DEC	ED.Y		; Строка выше
+	BR	$5		; Дальше
+1$:	IF	ROL.GD = #0 THEN $99	; Первая строка текста?
+	COM	R5		; R5 = -1 (нужен рулон)
+REL	MOV	#SL.LEN+19.,R0	; R0 -> SL.LEN
+	MOV	#19.,R2		; Строк
+2$:	MOVB	-(R0),1(R0)	; Сдвинуть длины строк
+	SOB	R2,2$		; Все
+	Mov	#177010,r1	; R1 -> регистр адреса
+	MOV	SL.PTR,(r1)	; Адрес первой строки
+	Dec	(r1)		; Назад
+3$:	Dec	(r1)		; Назад до нуля
+	Tstb	2(r1)		; Байт
+	Bne	3$		; Дальше
+	Inc	(r1)		; К началу строки
+	Mov	(r1),Sl.Ptr	; SL.PTR = начало верхней строки
+	DEC	ROL.GD		; Строка окна - 1
+REL	MOV	#ROLUP,R0	; Процедура рулона
+	BR	$5		; К общей части
+$99:	SEC			; Нет строки выше: C = 1
+	RETURN			; Выход
 ;***************** ВНИЗ *********************
 $EDD::
-REL     JMP     @D.REG(R5)
+REL	JMP	@D.REG(R5)	; По таблице D.REG (модификатор R5)
 
-$CR.DN: CALL    $LPUT
-        CALL    TSTMXL
-        BHIS    $99
-        CLR     R5
-        IF      ED.Y } #18. THEN 1$
-        INC     ED.Y
-        BR      $5
-1$:     COM     R5
-REL     MOV     #SL.LEN,R0
-        .MOVB   (R0),R1
-        ADD     R1,SL.PTR
-        MOV     #19.,R1
-2$:     MOVB    1(R0),(R0)+
-        SOB     R1,2$
-        INC     ROL.GD
-REL     MOV     #ROLDN,R0
+$CR.DN:	CALL	$LPUT		; Сохранить строку
+	CALL	TSTMXL		; Есть строка ниже?
+	BHIS	$99		; нет =>
+	CLR	R5		; R5 = 0 (рулон не нужен)
+	IF	ED.Y } #18. THEN 1$	; Последняя строка окна?
+	INC	ED.Y		; Строка ниже
+	BR	$5		; Дальше
+1$:	COM	R5		; R5 = -1 (нужен рулон)
+REL	MOV	#SL.LEN,R0	; R0 -> SL.LEN
+	.MOVB	(R0),R1		; R1 = длина верхней строки
+	ADD	R1,SL.PTR	; SL.PTR - на следующую
+	MOV	#19.,R1		; Строк
+2$:	MOVB	1(R0),(R0)+	; Сдвинуть длины строк
+	SOB	R1,2$		; Все
+	INC	ROL.GD		; Строка окна + 1
+REL	MOV	#ROLDN,R0	; Процедура рулона
 
-$5:     CALL    $LCOP
-        TST     R5
-        BEQ     5$
-        PUSH    R3
-        MOVB    #377,C.MOVE
-        CALL    $HLLC
-        INC     R3
-        MOV     R3,@#22656
-        MOV     #79.,@#22674
-        Call    StrOut
-        CALL    (R0)
-        POP     R3
-5$:     MOV     ED.Y,R0
-        .WORD   110360
-REL     .WORD   SL.LEN
-        ADD     #LBUF-1,R3
-        BIT     #200,ESW
-        BNE     4$
-        MOV     R3,R2
-        IF      R2 { MX.PTR THEN 3$
-4$:     MOV     MX.PTR,R2
-3$:     MOV     R2,LB.PTR
-1$:     CLC
-        RETURN
+$5:	CALL	$LCOP		; Скопировать строку
+	TST	R5		; Рулон нужен?
+	BEQ	5$		; нет =>
+	PUSH	R3		; Запомнить R3
+	MOVB	#377,C.MOVE	; Двигать курсор
+	CALL	$HLLC		; Вычислить адрес
+	INC	R3		; Следующая
+	MOV	R3,@#22656	; ТВ +0: видеоадрес под курсором
+	MOV	#79.,@#22674	; ТВ +16: осталось позиций 79.
+	Call	StrOut		; Вывести строку
+	CALL	(R0)		; Прокрутить рулон
+	POP	R3		; Вернуть R3
+5$:	MOV	ED.Y,R0		; R0 = номер строки
+	.WORD	110360		; Команда: MOVB SL.LEN(R0),R3
+REL	.WORD	SL.LEN		; Адрес SL.LEN
+	ADD	#LBUF-1,R3	; R3 -> строка в LBUF
+	BIT	#200,ESW	; Режим 200?
+	BNE	4$		; да =>
+	MOV	R3,R2		; R2 = R3
+	IF	R2 { MX.PTR THEN 3$	; Не правее MX.PTR?
+4$:	MOV	MX.PTR,R2	; R2 = MX.PTR
+3$:	MOV	R2,LB.PTR	; Курсор
+1$:	CLC			; Успех: C = 0
+	RETURN			; Выход
 
 
 
 ;****************** ВВОД ********************
-$EDE::  Cmp     r5,#4
-        Beq     $19
-        MOV     LB.PTR,R0
-        CLR     4$+2
-        BIT     #4,ESW
-        BEQ     9$
-        MOV     #LBUF,R1
-3$:     IF      (R1)+ = #40 THEN 3$ (B)
-        SUB     #LBUF+1,R1
-        CMP     R1,#377
-        BLOS    8$
-        CLR     R1
-8$:     MOV     R1,4$+2
-        BEQ     9$
-        IF      R1 { ED.X THEN 6$
-        SUB     ED.X,R0
-        BR      9$
-6$:     MOV     #LBUF+400,R2
-4$:     MOVB    -(R2),2(R2)
-        IF      R2 {} R0 THEN 4$
-5$:     MOVB    #40,(R2)+
-        SOB     R1,5$
-9$:     MOV     R0,R1
-1$:     IF      -(R0) = #40 THEN 1$ (B)
-        MOV     R0,R2
-        SUB     R1,R2
-        INC     R0
-        MOV     R0,LB.PTR
-        CLR     R0
-        CALL    $INAL
-        MOV     R2,$DC+2
-        SUB     R2,LB.PTR
-        CALL    $DEL
-        CALL    $LPUT
-        CALL    $TOUT
-        MOV     #LBUF,MX.PTR
-        ADD     4$+2,MX.PTR
-        ADD     ROL.HD,MX.PTR
-        INC     MX.LIN
-        CLR     R5
-        JMP     $CR.DN
+$EDE::	Cmp	r5,#4		; Ctrl-Enter?
+	Beq	$19		; да =>
+	MOV	LB.PTR,R0	; R0 -> курсор
+	CLR	4$+2		; Отступ 0
+	BIT	#4,ESW		; Автоотступ (ESW бит 4)?
+	BEQ	9$		; нет =>
+	MOV	#LBUF,R1	; R1 -> LBUF
+3$:	IF	(R1)+ = #40 THEN 3$ (B)	; Пропустить пробелы
+	SUB	#LBUF+1,R1	; Число пробелов в начале
+	CMP	R1,#377		; Меньше 256?
+	BLOS	8$		; да =>
+	CLR	R1		; R1 = 0
+8$:	MOV	R1,4$+2		; Отступ
+	BEQ	9$		; нет отступа =>
+	IF	R1 { ED.X THEN 6$	; Отступ левее курсора =>
+	SUB	ED.X,R0		; Курсор - отступ
+	BR	9$		; Дальше
+6$:	MOV	#LBUF+400,R2	; R2 -> конец LBUF
+4$:	MOVB	-(R2),2(R2)	; Сдвинуть остаток строки вправо
+	IF	R2 {} R0 THEN 4$	; до курсора
+5$:	MOVB	#40,(R2)+	; Пробелы отступа
+	SOB	R1,5$		; Все
+9$:	MOV	R0,R1		; R1 = курсор
+1$:	IF	-(R0) = #40 THEN 1$ (B)	; Назад по пробелам
+	MOV	R0,R2		; R2 = число пробелов
+	SUB	R1,R2		; R2 - длина
+	INC	R0		; R0 -> первый пробел
+	MOV	R0,LB.PTR	; Курсор
+	CLR	R0		; R0 = 0
+	CALL	$INAL		; Вставить пустую строку
+	MOV	R2,$DC+2	; Столько удалить
+	SUB	R2,LB.PTR	; Курсор - на конец
+	CALL	$DEL		; Удалить
+	CALL	$LPUT		; Сохранить строку
+	CALL	$TOUT		; Вывести текст
+	MOV	#LBUF,MX.PTR	; MX.PTR = начало
+	ADD	4$+2,MX.PTR	; Плюс отступ
+	ADD	ROL.HD,MX.PTR	; Плюс сдвиг окна
+	INC	MX.LIN		; Строк + 1
+	CLR	R5		; R5 = 0
+	JMP	$CR.DN		; На строку ниже
 
 ;**************** Ctrl-Enter ****************
 $19:
-        Call    $Lcop
-        Push    Ed.X
-        Clr     Ed.X
-        Call    $Lc.Ed
-        Pop     Ed.X
-StrOut: Mov     #79.,R.Put
-        Mov     Rol.Hd,r4
-        Add     #Lbuf,r4
-        Jmp     $PrtL
+	Call	$Lcop		; Скопировать строку
+	Push	Ed.X		; Запомнить столбец
+	Clr	Ed.X		; Столбец 0
+	Call	$Lc.Ed		; Позиция курсора
+	Pop	Ed.X		; Вернуть столбец
+StrOut:	Mov	#79.,R.Put	; Рулон строки
+	Mov	Rol.Hd,r4	; Сдвиг окна
+	Add	#Lbuf,r4	; Начало LBUF + сдвиг
+	Jmp	$PrtL		; Вывести строку
 
 
 ;**************** Page Down *****************
 $PG.DN::
-        CALL    $LPUT
-        MOV     ROL.GD,R1
-        ADD     ED.Y,R1
-        ADD     #20.,R1
-        BR      $106
+	CALL	$LPUT		; Сохранить строку
+	MOV	ROL.GD,R1	; ROL.GD
+	ADD	ED.Y,R1		; плюс ED.Y
+	ADD	#20.,R1		; Плюс 20.
+	BR	$106		; Перейти на строку
 
 ;*************** Page Up *******************
 $PG.UP:
-        CALL    $LPUT
-        MOV     ROL.GD,R1
-        ADD     ED.Y,R1
-        SUB     #20.,R1
-        BR      $106
+	CALL	$LPUT		; Сохранить строку
+	MOV	ROL.GD,R1	; ROL.GD
+	ADD	ED.Y,R1		; плюс ED.Y
+	SUB	#20.,R1		; Минус 20.
+	BR	$106		; Перейти на строку
 
 ;************ Top of text ******************
 $TX.UP::
-        CALL    $LPUT
-        CLR     R1
-        BR      $106
+	CALL	$LPUT		; Сохранить строку
+	CLR	R1		; Строка 0
+	BR	$106		; Перейти
 ;*********** Bottom of text *****************
 $TX.DN:
-        CALL    $LPUT
-        MOV     MX.LIN,R1
-        MOV     #19.,ED.Y
-$106:   CALL    LCLNUM
-        CALL    $LCOP
-        RETURN
+	CALL	$LPUT		; Сохранить строку
+	MOV	MX.LIN,R1	; R1 = число строк
+	MOV	#19.,ED.Y	; Строка окна 19.
+$106:	CALL	LCLNUM		; Установить окно на строку R1
+	CALL	$LCOP		; Скопировать строку
+	RETURN			; Выход
 
 
 
 ;*************** Search up ******************
 $SR.UP:
-        MOV     #1,FSW1
-$104:   CALL    $CUROF
-        MOV     #2,FSW3
-        CALL    $LPUT
-        CALL    $SRC
-        CALL    $CURON
-        CALL    $LCOP
-        RETURN
+	MOV	#1,FSW1		; FSW1 = 1 (назад)
+$104:	CALL	$CUROF		; Выключить курсор
+	MOV	#2,FSW3		; FSW3 = 2 (с текущей позиции)
+	CALL	$LPUT		; Сохранить строку
+	CALL	$SRC		; Поиск
+	CALL	$CURON		; Включить курсор
+	CALL	$LCOP		; Скопировать строку
+	RETURN			; Выход
 ;************* Search down ******************
 $SR.DN:
-        CLR     FSW1
-        BR      $104
+	CLR	FSW1		; FSW1 = 0 (вперёд)
+	BR	$104		; Общая часть
 
 
 
 ;**************** INSERT *******************
-$EDI:   MOV     #2,R0
-        XOR     R0,ESW
-        RETURN
+$EDI:	MOV	#2,R0		; Бит режима вставки
+	XOR	R0,ESW		; Переключить ESW
+	RETURN			; Выход
 ;*************** Ctrl-Y ********************
-$EDCY:: CALL    TSTMXL
-        BHIS    $88
-        DEC     MX.LIN
-        CLR     R2
-        CALL    $LPUTN
-$6:     CALL    $TOUT
-        CALL    $LCOP
-$88:    RETURN
+$EDCY::	CALL	TSTMXL		; Строк не больше?
+	BHIS	$88		; нет => выход
+	DEC	MX.LIN		; Строк - 1
+	CLR	R2		; R2 = 0
+	CALL	$LPUTN		; Удалить строку
+$6:	CALL	$TOUT		; Вывести текст
+	CALL	$LCOP		; Скопировать строку
+$88:	RETURN			; Выход
 ;*************** Ctrl-N ********************
-$EDCN:: PUSH    LB.PTR
-        MOV     #LBUF,LB.PTR
-        CLR     R0
-        CALL    $INAL
-        POP     LB.PTR
-        CALL    $LPALL
-        INC     MX.LIN
-        BR      $6
+$EDCN::	PUSH	LB.PTR		; Запомнить курсор
+	MOV	#LBUF,LB.PTR	; Курсор - в начало
+	CLR	R0		; R0 = 0
+	CALL	$INAL		; Вставить пустую строку
+	POP	LB.PTR		; Вернуть курсор
+	CALL	$LPALL		; Сохранить строку
+	INC	MX.LIN		; Строк + 1
+	BR	$6		; Вывести текст
 ;*************** Ctrl-W ********************
-$EDCW:: CALL    $LPUT
-        CALL    F81
-        CALL    $LCOP
-        RETURN
+$EDCW::	CALL	$LPUT		; Сохранить строку
+	CALL	F81		; Компиляция (F81)
+	CALL	$LCOP		; Скопировать строку
+	RETURN			; Выход
 ;***************** F10 *********************
 
-$INS:   BIT     #2,ESW
-        BEQ     $$N
-        BIT     #400,ESW
-        BEQ     $INAL
-        IF      @LB.PTR = #40 THEN $$N (B)
-$INAL:  MOV     #1400,R5
-        MOV     R5,R4
-        SUB     LB.PTR,R4
-2$:     MOVB    -(R5),1(R5)
-        SOB     R4,2$
-$$N:    MOVB    R0,@LB.PTR
-$$P:    MOV     LB.PTR,R4
-        MOVB    #377,EDFLG
-        RETURN
+;------------------------------------------------------------------------------
+; $INS - вставить символ R0 в LBUF (режим вставки - сдвигает остаток; замена -
+; без сдвига); $INAL - вставка без проверок; $DEL - удалить символ под курсором
+; (число удаляемых - в $DC+2)
+;------------------------------------------------------------------------------
+$INS:	BIT	#2,ESW		; Режим вставки (ESW бит 2)?
+	BEQ	$$N		; нет => замена
+	BIT	#400,ESW	; Бит 400 ESW?
+	BEQ	$INAL		; нет => вставка
+	IF	@LB.PTR = #40 THEN $$N (B)	; Под курсором пробел => замена
+$INAL:	MOV	#1400,R5	; Размер LBUF
+	MOV	R5,R4		; R4 = R5
+	SUB	LB.PTR,R4	; Минус курсор = число байт
+2$:	MOVB	-(R5),1(R5)	; Раздвинуть строку вправо
+	SOB	R4,2$		; Все
+$$N:	MOVB	R0,@LB.PTR	; Символ - в строку
+$$P:	MOV	LB.PTR,R4	; R4 -> курсор
+	MOVB	#377,EDFLG	; Строка изменена
+	RETURN			; Выход
 
-$DEL:   MOV     LB.PTR,R5
-$DC:    MOVB    (R5)+,-2(R5)
-        IF      R5 { #LBUF+401 THEN $DC
-        ADD     $DC+2,R5
-1$:     MOVB    #40,(R5)+
-        IF      R5 { #LBUF+400 THEN 1$
-        MOV     #-2,$DC+2
-        BR      $$P
+$DEL:	MOV	LB.PTR,R5	; R5 -> курсор
+$DC:	MOVB	(R5)+,-2(R5)	; Сдвинуть остаток влево
+	IF	R5 { #LBUF+401 THEN $DC	; до конца LBUF
+	ADD	$DC+2,R5	; Плюс счётчик ($DC+2)
+1$:	MOVB	#40,(R5)+	; Пробелы справа
+	IF	R5 { #LBUF+400 THEN 1$	; до конца LBUF
+	MOV	#-2,$DC+2	; Счётчик = -2
+	BR	$$P		; Готово
 
-TSTMXL: MOV     ED.Y,R0
-        ADD     ROL.GD,R0
-        CMP     R0,MX.LIN
-        RETURN
+; TSTMXL - строка курсора (ROL.GD + ED.Y) и число строк MX.LIN: флаги по CMP
+TSTMXL:	MOV	ED.Y,R0		; R0 = номер строки в окне
+	ADD	ROL.GD,R0	; плюс ROL.GD
+	CMP	R0,MX.LIN	; Сравнить с числом строк
+	RETURN			; Выход
 
 
 
+; $LC.ED - поставить курсор на экране (ED.X + 1, ED.Y + 2)
 $LC.ED::
-        Push    Ed.X
-        Inc     (Sp)
-        Push    Ed.Y
-        Add     #2,(Sp)
+	Push	Ed.X		; ED.X
+	Inc	(Sp)		; + 1
+	Push	Ed.Y		; ED.Y
+	Add	#2,(Sp)		; + 2 (верхняя рамка)
 
-        Call    $Locat
-        Return
+	Call	$Locat		; Позиция курсора
+	Return			; Выход
 
 
 
-$GETS:  MOV     #177010,R4
-        MOV     LB.PTR,-(SP)
-        SUB     #LBUF,(SP)
-        MOV     SL.PTR,(R4)
-        MOV     @#2626,R1
-        SUB     #2630,R1
-        CLR     R0
-        DIV     #44.,R0
-        MOV     R0,R1
-REL     MOV     #XSIM,R3
-        ADD     R3,R1
-        ADD     #21.,R3
-REL     MOV     #SL.LEN,R5
-        MOV     #20.,6$
-        MOV     #20.,R0
-        SUB     ED.Y,R0
-9$:     .MOVB   (R5)+,R2
-        IF      (SP) { R2 THEN 4$
-        MOVB    #40,(R1)+
-        BR      1$
-4$:     ADD     (SP),(R4)
-        MOVB    2(R4),(R1)+
-        SUB     (SP),(R4)
-1$:     ADD     R2,(R4)
-        CMP     6$,R0
-        BNE     11$
-        MOVB    @LB.PTR,-1(R1)
-11$:    CMP     R1,R3
-        BNE     7$
-        SUB     #21.,R1
-7$:     DEC     (PC)+
-6$:     .WORD   20.
-        BNE     9$
-        CLRB    (R1)+
-        TST     (SP)+
-        RETURN
+;------------------------------------------------------------------------------
+; $GETS - пересчитать символы XSIM для рулона: для каждой видимой строки символ
+; в позиции курсора (по SL.LEN и тексту)
+;------------------------------------------------------------------------------
+$GETS:	MOV	#177010,R4	; R4 -> регистр адреса
+	MOV	LB.PTR,-(SP)	; Смещение курсора в LBUF
+	SUB	#LBUF,(SP)	; в стек
+	MOV	SL.PTR,(R4)	; Адрес верхней строки текста
+	MOV	@#2626,R1	; Таблица строк окна: указатель
+	SUB	#2630,R1	; Минус начало таблицы
+	CLR	R0		; R0 = 0
+	DIV	#44.,R0		; Шаг таблицы 44. байта
+	MOV	R0,R1		; R1 = номер строки развёртки
+REL	MOV	#XSIM,R3	; R3 -> XSIM (символы сдвига)
+	ADD	R3,R1		; R1 -> позиция в XSIM
+	ADD	#21.,R3		; R3 -> конец XSIM
+REL	MOV	#SL.LEN,R5	; R5 -> SL.LEN
+	MOV	#20.,6$		; Счётчик строк (6$): 20.
+	MOV	#20.,R0		; R0 = 20.
+	SUB	ED.Y,R0		; Минус строка курсора
+9$:	.MOVB	(R5)+,R2	; Длина строки
+	IF	(SP) { R2 THEN 4$	; Строка короче смещения курсора?
+	MOVB	#40,(R1)+	; Пробел
+	BR	1$		; Дальше
+4$:	ADD	(SP),(R4)	; Плюс смещение курсора
+	MOVB	2(R4),(R1)+	; Символ строки
+	SUB	(SP),(R4)	; Вернуть адрес
+1$:	ADD	R2,(R4)		; Адрес следующей строки
+	CMP	6$,R0		; Строка курсора?
+	BNE	11$		; нет =>
+	MOVB	@LB.PTR,-1(R1)	; Символ под курсором
+11$:	CMP	R1,R3		; Конец XSIM?
+	BNE	7$		; нет =>
+	SUB	#21.,R1		; В начало XSIM
+7$:	DEC	(PC)+		; Счётчик строк
+6$:	.WORD	20.		; Число строк (6$)
+	BNE	9$		; Все
+	CLRB	(R1)+		; Конец
+	TST	(SP)+		; Снять смещение
+	RETURN			; Выход
 
-$RHD::  CALL    $PUSH                           ; ЛЕВЫЙ/ПРАВЫЙ РУЛОН
-        MOVB    #377,C.MOVE
-        MOV     ROL.HD,R1
-        MOV     #177010,R5
-        MOV     #177014,R4
-        MOV     #YELLOW,2(R4)
-        SUB     #6,SP
-        MOV     #2630,R0
-        ADD     #103460+23.,R1
-        IF      (R0) = R1 THEN $$REX
-REL     MOV     #XSIM,R3
-        MOV     #78.,8$
-        SUB     ED.X,8$
-        MOV     #21.,9$
-2$:     MOV     #11.,R2
-        MOVB    (R3)+,(SP)
-        MOV     R3,4(SP)
-        .MOVB   (SP),R3
-        ASL     R3
-        MOV     14142(R3),R3
-1$:     MOV     (R0),(R5)
-        MOV     (R4),(SP)
-        ADD     #79.,(R5)
-        MOV     (R4),2(SP)
-        MOV     R1,(R0)+
-        MOV     R1,(R5)
-        MOV     (SP),(R4)
-        ADD     #79.,(R5)
-        MOV     2(SP),(R4)
+; $RHD - сдвиг окна по горизонтали: перерисовать 21 строку знаков по XSIM
+; (рулон)
+$RHD::	CALL	$PUSH		; ЛЕВЫЙ/ПРАВЫЙ РУЛОН
+	MOVB	#377,C.MOVE	; Курсор двигается
+	MOV	ROL.HD,R1	; R1 = сдвиг окна
+	MOV	#177010,R5	; R5 -> регистр адреса
+	MOV	#177014,R4	; R4 -> регистр данных
+	MOV	#YELLOW,2(R4)	; Цвет в старший байт
+	SUB	#6,SP		; Рабочие слова
+	MOV	#2630,R0	; R0 -> таблица строк окна
+	ADD	#103460+23.,R1	; Видеоадрес первой строки
+	IF	(R0) = R1 THEN $$REX	; Уже так => выход
+REL	MOV	#XSIM,R3	; R3 -> XSIM
+	MOV	#78.,8$		; Столбцов: 78.
+	SUB	ED.X,8$		; минус позиция курсора
+	MOV	#21.,9$		; Строк: 21.
+2$:	MOV	#11.,R2		; Строк развёртки: 11.
+	MOVB	(R3)+,(SP)	; Знак из XSIM
+	MOV	R3,4(SP)	; Запомнить R3
+	.MOVB	(SP),R3		; Код знака
+	ASL	R3		; Индекс
+	MOV	14142(R3),R3	; R3 -> образ знака
+1$:	MOV	(R0),(R5)	; Слово таблицы строк
+	MOV	(R4),(SP)	; Запомнить данные
+	ADD	#79.,(R5)	; К другой плоскости
+	MOV	(R4),2(SP)	; Запомнить данные
+	MOV	R1,(R0)+	; Новый видеоадрес - в таблицу
+	MOV	R1,(R5)		; и в окно
+	MOV	(SP),(R4)	; Вернуть данные
+	ADD	#79.,(R5)	; К другой плоскости
+	MOV	2(SP),(R4)	; Вернуть данные
 8$=.+2
-        SUB     #0,(R5)
-        MOVB    (R3)+,(SP)
-        MOV     (SP),10(R4)
-        ADD     #81.,R1
-        TST     (R0)+
-        SOB     R2,1$
-        MOV     4(SP),R3
+	SUB	#0,(R5)		; Сдвиг (операнд подставляется)
+	MOVB	(R3)+,(SP)	; Байт образа
+	MOV	(SP),10(R4)	; Цвет
+	ADD	#81.,R1		; Следующая строка развёртки
+	TST	(R0)+		; Пропустить слово
+	SOB	R2,1$		; Все 11. строк
+	MOV	4(SP),R3	; Вернуть R3
 9$=.+2
-        DEC     #0
-        BNE     2$
-$$REX:  ADD     #6,SP
-REL     MOV     #ESLHOR,R5
-        CALL    SCRBLM
+	DEC	#0		; Счётчик знаков (9$)
+	BNE	2$		; Все знаки
+$$REX:	ADD	#6,SP		; Снять рабочие слова
+REL	MOV	#ESLHOR,R5	; R5 -> полоса горизонтальная
+	CALL	SCRBLM		; Сдвинуть бегунок
 
 
-        CALL    $POP
-        Return
+	CALL	$POP		; Вернуть регистры
+	Return			; Выход
 
+;------------------------------------------------------------------------------
+; ROLDN / ROLUP - прокрутка окна на строку вниз / вверх: сдвиг системной таблицы
+; строк ПП (ячейки 2626, 4462, 4464: по расчёту смещений - слова ссылок записей
+; списка видеострок 2500-4666; окно прокручивается перестановкой ссылок),
+; знаки 200/201/206 на полосе
+;------------------------------------------------------------------------------
 ROLDN::
-        CALL    $PUSH
-        LOC     79.,21.
-        MOV     #201,R0
-        CALL    TWait
-        CALL    B$HIDE
-        MOV     @#2626,R0
-        ADD     #1560,R0
-        CMP     R0,#4464
-        BCS     2$
-        BHI     1$
-        MOV     #2630,@#4462
-        BR      3$
-1$:     SUB     #1634,R0
-2$:     MOV     R0,-2(R0)
-3$:     ADD     #54,R0
-        CMP     R0,#4464
-        BLOS    4$
-        SUB     #1634,R0
-4$:     MOV     #4464,-(R0)
-        MOV     @#2626,R0
-        ADD     #54,R0
-        CMP     R0,#4464
-        BCS     5$
-        SUB     #1634,R0
-5$:     MOV     R0,@#2626
-        MOV     #200,R0
-        LOC     79.,2.
-        CALL    EMT42
-$110:   MOV     #206,R0
-        CALL    $111
-        CALL    RSTCOL
+	CALL	$PUSH		; Сохранить регистры
+	LOC	79.,21.		; Позиция (79., 21.)
+	MOV	#201,R0		; Знак стрелки
+	CALL	TWait		; Ждать таймер
+	CALL	B$HIDE		; Спрятать курсор и стрелки
+	MOV	@#2626,R0	; Системная ячейка 2626
+	ADD	#1560,R0	; Плюс 1560
+	CMP	R0,#4464	; За концом таблицы?
+	BCS	2$		; меньше =>
+	BHI	1$		; больше =>
+	MOV	#2630,@#4462	; Равно: ячейка 4462 := 2630
+	BR	3$		; Дальше
+1$:	SUB	#1634,R0	; Минус 1634
+2$:	MOV	R0,-2(R0)	; Ссылка на себя
+3$:	ADD	#54,R0		; Плюс 54
+	CMP	R0,#4464	; За концом?
+	BLOS	4$		; нет =>
+	SUB	#1634,R0	; Минус 1634
+4$:	MOV	#4464,-(R0)	; Конец таблицы (4464)
+	MOV	@#2626,R0	; Системная ячейка 2626
+	ADD	#54,R0		; Плюс 54
+	CMP	R0,#4464	; За концом?
+	BCS	5$		; нет =>
+	SUB	#1634,R0	; Минус 1634
+5$:	MOV	R0,@#2626	; Новое значение ячейки 2626
+	MOV	#200,R0		; Знак 200
+	LOC	79.,2.		; Позиция (79., 2.)
+	CALL	EMT42		; Вывести
+$110:	MOV	#206,R0		; Знак 206 (бегунок)
+	CALL	$111		; Вывести
+	CALL	RSTCOL		; Вернуть цвет
 
-        CALL    $POP
-        RETURN
+	CALL	$POP		; Вернуть регистры
+	RETURN			; Выход
 
 ROLUP::
-        CALL    $PUSH
-        LOC     79.,2.
-        MOV     #200,R0
-        CALL    TWait
-        CALL    B$HIDE
-        MOV     @#2626,R0
-        ADD     #1560,R0
-        CMP     R0,#4464
-        BCS     2$
-        BHI     1$
-        MOV     #2630,@#4462
-        BR      3$
-1$:     SUB     #1634,R0
-2$:     MOV     R0,-2(R0)
-3$:     SUB     #54,R0
-        CMP     R0,#2630
-        BHI     4$
-        ADD     #1634,R0
-4$:     MOV     #4464,-(R0)
-        MOV     @#2626,R0
-        SUB     #54,R0
-        CMP     R0,#2630
-        BCC     5$
-        ADD     #1634,R0
-5$:     MOV     R0,@#2626
-        MOV     #201,R0
-        LOC     79.,21.
-        CALL    EMT42
-        BR      $110
+	CALL	$PUSH		; Сохранить регистры
+	LOC	79.,2.		; Позиция (79., 2.)
+	MOV	#200,R0		; Знак 200
+	CALL	TWait		; Ждать таймер
+	CALL	B$HIDE		; Спрятать курсор и стрелки
+	MOV	@#2626,R0	; Системная ячейка 2626
+	ADD	#1560,R0	; Плюс 1560
+	CMP	R0,#4464	; За концом таблицы?
+	BCS	2$		; меньше =>
+	BHI	1$		; больше =>
+	MOV	#2630,@#4462	; Равно: ячейка 4462 := 2630
+	BR	3$		; Дальше
+1$:	SUB	#1634,R0	; Минус 1634
+2$:	MOV	R0,-2(R0)	; Ссылка на себя
+3$:	SUB	#54,R0		; Минус 54
+	CMP	R0,#2630	; До начала?
+	BHI	4$		; нет =>
+	ADD	#1634,R0	; Плюс 1634
+4$:	MOV	#4464,-(R0)	; Конец таблицы (4464)
+	MOV	@#2626,R0	; Системная ячейка 2626
+	SUB	#54,R0		; Минус 54
+	CMP	R0,#2630	; До начала?
+	BCC	5$		; нет =>
+	ADD	#1634,R0	; Плюс 1634
+5$:	MOV	R0,@#2626	; Новое значение ячейки 2626
+	MOV	#201,R0		; Знак 201
+	LOC	79.,21.		; Позиция (79., 21.)
+	CALL	EMT42		; Вывести
+	BR	$110		; Общая часть
 
 
 
@@ -777,618 +821,646 @@ ROLUP::
 
 
 
+; B$HIDE - спрятать курсор и стрелки, подготовить полосу; $111 - знак на полосе
 B$HIDE:
-        Call    $CHide
-        PUSH    R0
-        COLOR   BLUE,CYAN
-        MOV     #204,R0
-        CALL    EMT42
-        CALL    $HLLC
-        ADD     #79.,R3
-        MOV     R3,@#22656
-        POP     R0
-        CALL    EMT42
+	Call	$CHide		; Спрятать курсор
+	PUSH	R0		; Запомнить R0
+	COLOR	BLUE,CYAN	; Цвет
+	MOV	#204,R0		; Знак 204
+	CALL	EMT42		; Вывести
+	CALL	$HLLC		; R3 = системная ячейка
+	ADD	#79.,R3		; Плюс 79.
+	MOV	R3,@#22656	; ТВ +0: видеоадрес под курсором
+	POP	R0		; Вернуть R0
+	CALL	EMT42		; Вывести знак
 
 
-        MOV     #204,R0
+	MOV	#204,R0		; Знак 204
 $111:
-        PUSH    #79.
-        MOV     ESLVER+10,-(SP)
-        ADD     #3.,(SP)
-        CMPB    (SP),#20.
-        BLOS    1$
-        MOVB    #20.,(SP)
-1$:     CALL    $LOCAT
-        CALL    EMT42
-        RETURN
+	PUSH	#79.		; X = 79.
+	MOV	ESLVER+10,-(SP)	; Y = положение бегунка
+	ADD	#3.,(SP)	; Плюс 3
+	CMPB	(SP),#20.	; Больше 20.?
+	BLOS	1$		; нет =>
+	MOVB	#20.,(SP)	; Y = 20.
+1$:	CALL	$LOCAT		; Позиция
+	CALL	EMT42		; Вывести знак
+	RETURN			; Выход
 
 
 
-EDHIDE::MOV     PLG2,R0
-        ASL     R0
-REL     MOV     COLRS(R0),R0
-        MOV     R0,@#EDXPL
-        MOV     R0,@#EDXPL+2
-        RETURN
+; EDHIDE - убрать палитру окна редактора (фон PLG2); EDSHOW - вернуть
+EDHIDE::MOV	PLG2,R0		; R0 = цвет PLG2
+	ASL	R0		; Индекс * 2
+REL	MOV	COLRS(R0),R0	; Заливка
+	MOV	R0,@#EDXPL	; Палитра окна редактора
+	MOV	R0,@#EDXPL+2	; и вторая часть
+	RETURN			; Выход
 
-EDSHOW::MOV     @#2470,@#EDXPL
-        MOV     @#2472,@#EDXPL+2
-        RETURN
-
-
-$TOUT::                                 ; ВЫВОД ТЕКСТА ИЗ ПАМЯТИ НА ЭКРАН
-REL     MOV     #SL.LEN,R1
-        ADD     ED.Y,R1
-        MOVB    #377,(R1)
-        CLR     ED.X
-        PUSH    ED.Y
-        MOVB    #377,C.IDEN
-        MOV     #LBUF,R4
-        ADD     ROL.HD,R4
+EDSHOW::MOV	@#2470,@#EDXPL	; Палитра экрана - в палитру окна
+	MOV	@#2472,@#EDXPL+2	; и вторая часть
+	RETURN			; Выход
 
 
-3$:     .MOVB   (R1),R3
-        SUB     ROL.HD,R3
-        DEC     R3
-        MOV     R3,R.PUT
-        CALL    $LCOP
-        MOVB    R3,(R1)+
-        CALL    $LC.ED
-        CALL    $PRTL
-        INC     ED.Y
-        IF      ED.Y { #20. THEN 3$
-        POP     ED.Y
-        CLRB    C.IDEN
-        RETURN
-
-$LCOP:  PUSH    <R0,R4,R5,R1>                   ; КОПИРОВАНИЕ СТРОКИ ИЗ ПАМЯТИ
-        CLRB    EDFLG
-        CALL    $GETLP
-        MOV     #177010,R4                      ; В БУФРЕР РЕДАКТОРА
-        MOV     #177012,R5
-        MOV     R0,(R4)
-        MOV     #LBUF,R3
-        MOV     #400,R1
-2$:     MOVB    (R5),(R3)+
-        BEQ     3$
-7$:     INC     (R4)
-        SOB     R1,2$
-3$:     MOV     #40,R0
-        MOVB    R0,-1(R3)
-        PUSH    R3
-        MOV     #LBUF+400,R1
-        SUB     R3,R1
-        BEQ     4$
-1$:     MOVB    R0,(R3)+
-        SOB     R1,1$
-4$:     POP     R3
-        SUB     #LBUF,R3
-        INC     (R4)
-        POP     <R1,R5,R4,R0>
-        RETURN
+$TOUT::				; ВЫВОД ТЕКСТА ИЗ ПАМЯТИ НА ЭКРАН
+REL	MOV	#SL.LEN,R1	; R1 -> SL.LEN
+	ADD	ED.Y,R1		; Плюс ED.Y
+	MOVB	#377,(R1)	; Признак конца: 377
+	CLR	ED.X		; Столбец 0
+	PUSH	ED.Y		; Запомнить ED.Y
+	MOVB	#377,C.IDEN	; Курсор IDE
+	MOV	#LBUF,R4	; R4 -> LBUF
+	ADD	ROL.HD,R4	; Плюс сдвиг окна
 
 
+3$:	.MOVB	(R1),R3		; R3 = длина строки
+	SUB	ROL.HD,R3	; Минус сдвиг окна
+	DEC	R3		; Минус 1
+	MOV	R3,R.PUT	; Длина вывода (R.PUT)
+	CALL	$LCOP		; Скопировать строку
+	MOVB	R3,(R1)+	; Длина строки - в SL.LEN
+	CALL	$LC.ED		; Позиция курсора
+	CALL	$PRTL		; Вывести
+	INC	ED.Y		; Следующая строка
+	IF	ED.Y { #20. THEN 3$	; Все строки окна
+	POP	ED.Y		; Вернуть ED.Y
+	CLRB	C.IDEN		; Курсор редактора вернул
+	RETURN			; Выход
+
+$LCOP:	PUSH	<R0,R4,R5,R1>	; КОПИРОВАНИЕ СТРОКИ ИЗ ПАМЯТИ
+	CLRB	EDFLG		; Строка не изменена
+	CALL	$GETLP		; R0 -> строка в тексте
+	MOV	#177010,R4	; В БУФРЕР РЕДАКТОРА
+	MOV	#177012,R5	; R5 -> байт данных
+	MOV	R0,(R4)		; Адрес строки
+	MOV	#LBUF,R3	; R3 -> LBUF
+	MOV	#400,R1		; Не более 256. байт
+2$:	MOVB	(R5),(R3)+	; Байт строки - в LBUF
+	BEQ	3$		; нуль =>
+7$:	INC	(R4)		; Следующий адрес
+	SOB	R1,2$		; Все байты
+3$:	MOV	#40,R0		; R0 = пробел
+	MOVB	R0,-1(R3)	; Нуль - пробелом
+	PUSH	R3		; Запомнить R3
+	MOV	#LBUF+400,R1	; R1 = конец LBUF
+	SUB	R3,R1		; Сколько пробелов добавить
+	BEQ	4$		; нисколько =>
+1$:	MOVB	R0,(R3)+	; Пробелы до конца LBUF
+	SOB	R1,1$		; Все
+4$:	POP	R3		; Вернуть R3
+	SUB	#LBUF,R3	; R3 = длина строки
+	INC	(R4)		; Адрес за нулём
+	POP	<R1,R5,R4,R0>	; Вернуть регистры
+	RETURN			; Выход
+
+
+; $GETLP - R0 -> строка ED.Y в тексте (SL.PTR плюс длины строк выше)
 $GETLP::
-REL     MOV     #SL.LEN,R1
-        MOV     SL.PTR,R0
-        MOV     ED.Y,R4
-        BEQ     1$
-2$:     .MOVB   (R1)+,R5
-        ADD     R5,R0
-        SOB     R4,2$
-1$:     RETURN
+REL	MOV	#SL.LEN,R1	; R1 -> SL.LEN
+	MOV	SL.PTR,R0	; R0 -> первая видимая строка
+	MOV	ED.Y,R4		; R4 = строка в окне
+	BEQ	1$		; Первая =>
+2$:	.MOVB	(R1)+,R5	; Длина строки
+	ADD	R5,R0		; Прибавить
+	SOB	R4,2$		; Все строки выше
+1$:	RETURN			; Выход: R0 -> строка ED.Y
 
-$LPUT:  IF      EDFLG {} #0 THEN $LPALL (B)
-        RETURN
-$LPALL: MOV     #-1,R2
-$LPUTN: CLRB    EDFLG
-        CALL    $PUSH
+;------------------------------------------------------------------------------
+; $LPUT - записать строку в текст, если изменена (EDFLG); $LPALL - всегда;
+; $LPUTN - R2 = длина новой строки (R2 < 0 - по LBUF). Текст сдвигается на
+; разницу длин с отключённым ПЗУ; DN.PTR, ChngId обновляются
+;------------------------------------------------------------------------------
+$LPUT:	IF	EDFLG {} #0 THEN $LPALL (B)	; Строка изменена?
+	RETURN			; Выход
+$LPALL:	MOV	#-1,R2		; R2 = -1: записать целиком
+$LPUTN:	CLRB	EDFLG		; Строка не изменена
+	CALL	$PUSH		; Сохранить регистры
 
-        MOV     ED.Y,R0
-REL     MOVB    SL.LEN(R0),-(SP)
-        IF      R2 }= #0 THEN 8$
-        MOV     #LBUF+400,R2
-9$:     IF      -(R2) = #40 THEN 9$ (B)
-        SUB     #LBUF-2,R2
-8$:     .WORD   110260
-REL     .WORD   SL.LEN
-        .MOVB   (SP)+,R3
-        CALL    $GETLP
-        SUB     R2,R3
-        BEQ     30$
-        MOV     #177010,R5
-        MOV     #177012,R4
-        CALL    PZUOFF
-        MOV     R0,R1
-        PUSH    R0
-        ADD     R2,R1
-        MOV     DN.PTR,(R5)
-        MOV     (R5),R0
-        IF      R3 } #0 THEN 40$
-        SUB     R3,R0
-        INC     R0
-        SUB     R0,R1
-        NEG     R1
-        INC     R1
-        ASR     R1
-        BCC     3$
+	MOV	ED.Y,R0		; Строка в окне
+REL	MOVB	SL.LEN(R0),-(SP)	; Прежняя длина - в стек
+	IF	R2 }= #0 THEN 8$	; R2 >= 0 => длина задана
+	MOV	#LBUF+400,R2	; R2 -> конец LBUF
+9$:	IF	-(R2) = #40 THEN 9$ (B)	; Назад по пробелам
+	SUB	#LBUF-2,R2	; R2 = длина строки с нулём
+8$:	.WORD	110260		; Команда: MOVB R2,SL.LEN(R0)
+REL	.WORD	SL.LEN		; Адрес SL.LEN
+	.MOVB	(SP)+,R3	; R3 = прежняя длина
+	CALL	$GETLP		; R0 -> строка в тексте
+	SUB	R2,R3		; R3 = прежняя - новая
+	BEQ	30$		; Длина не изменилась =>
+	MOV	#177010,R5	; R5 -> регистр адреса
+	MOV	#177012,R4	; R4 -> регистр байта
+	CALL	PZUOFF		; ПЗУ ПП отключено
+	MOV	R0,R1		; R1 -> строка
+	PUSH	R0		; Запомнить R0
+	ADD	R2,R1		; R1 -> конец новой строки
+	MOV	DN.PTR,(R5)	; Конец текста
+	MOV	(R5),R0		; R0 = конец текста
+	IF	R3 } #0 THEN 40$	; Строка длиннее => 40$
+	SUB	R3,R0		; Строка короче: сдвинуть текст влево
+	INC	R0		; R0 + 1
+	SUB	R0,R1		; Размер
+	NEG	R1		; Размер
+	INC	R1		; + 1
+	ASR	R1		; В слова
+	BCC	3$		; Чётный =>
 
-2$:     MOVB    (R4),-(R0)
-        DEC     (R5)
-3$:     MOVB    (R4),-(R0)
-        DEC     (R5)
-        SOB     R1,2$
-5$:     CALL    PZUON
-        POP     R0
-        SUB     R3,DN.PTR
-30$:    CALL    PZUOFF
-        MOV     R0,R5
-        TST     R2
-        BEQ     32$
-        MOV     #LBUF,R1
-31$:    MOVB    (R1)+,(R5)+
-        SOB     R2,31$
-        CLRB    -1(R5)
-32$:    CALL    PZUON
-        CLRB    EDFLG
-        Movb    #377,ChngId
-        Call    $Pop
-        Return
-40$:    MOV     R1,(R5)
-        ADD     R3,(R5)
-        SUB     (R5),R0
-        INC     R0
-        ASR     R0
-        BCC     42$
-41$:    MOVB    (R4),(R1)+
-        INC     (R5)
-42$:    MOVB    (R4),(R1)+
-        INC     (R5)
-        SOB     R0,41$
-        BR      5$
+2$:	MOVB	(R4),-(R0)	; Байт текста - назад
+	DEC	(R5)		; Следующий адрес
+3$:	MOVB	(R4),-(R0)	; Байт
+	DEC	(R5)		; Следующий адрес
+	SOB	R1,2$		; Все
+5$:	CALL	PZUON		; ПЗУ включено
+	POP	R0		; Вернуть R0
+	SUB	R3,DN.PTR	; Конец текста сдвинулся
+30$:	CALL	PZUOFF		; ПЗУ ПП отключено
+	MOV	R0,R5		; R5 -> строка
+	TST	R2		; Длина строки
+	BEQ	32$		; нет =>
+	MOV	#LBUF,R1	; R1 -> LBUF
+31$:	MOVB	(R1)+,(R5)+	; Байт LBUF - в текст
+	SOB	R2,31$		; Все
+	CLRB	-1(R5)		; Нуль в конце строки
+32$:	CALL	PZUON		; ПЗУ включено
+	CLRB	EDFLG		; Строка записана
+	Movb	#377,ChngId	; Текст изменён (ChngId)
+	Call	$Pop		; Вернуть регистры
+	Return			; Выход
+40$:	MOV	R1,(R5)		; Строка длиннее: R1 -> строка
+	ADD	R3,(R5)		; Плюс разница
+	SUB	(R5),R0		; Размер перемещаемой части
+	INC	R0		; + 1
+	ASR	R0		; В слова
+	BCC	42$		; Чётный =>
+41$:	MOVB	(R4),(R1)+	; Байт текста - вперёд
+	INC	(R5)		; Следующий адрес
+42$:	MOVB	(R4),(R1)+	; Байт
+	INC	(R5)		; Следующий адрес
+	SOB	R0,41$		; Все
+	BR	5$		; К записи строки
 
-$PRTL:: Push    r0
-        COLOR   YELLOW,BLUE
-        Pop     r0
-$Prl1:: CALL    $PUSH
-        MOV     R4,R1
-        MOV     @#22674,R3
-        DEC     R3
-        ADD     R3,R1
-        MOV     R.PUT,R0
-        MOV     #78.,R.PUT
-        CMP     R0,R3
-        BHI     4$
-        MOV     #40,R5
-3$:     IF      -(R1) = R5 THEN 3$ (B)
-        INC     R1
-        ADD     R4,R0
-        CMP     R1,R0
-        BHIS    4$
-        MOV     R0,R1
-4$:     SUB     R4,R1
-        BEQ     9$
+;------------------------------------------------------------------------------
+; $PRTL / $Prl1 - вывести строку R4 (из LBUF) с курсора: до R.PUT символов,
+; пробелы подряд очищаются заливкой (10$), прочие знаки - $$PRS
+;------------------------------------------------------------------------------
+$PRTL::	Push	r0		; Сохранить R0
+	COLOR	YELLOW,BLUE	; Цвет
+	Pop	r0		; Вернуть R0
+$Prl1::	CALL	$PUSH		; Сохранить регистры
+	MOV	R4,R1		; R1 -> начало строки
+	MOV	@#22674,R3	; ТВ +16: осталось позиций в строке
+	DEC	R3		; Минус 1
+	ADD	R3,R1		; R1 -> конец строки вывода
+	MOV	R.PUT,R0	; R0 = R.PUT
+	MOV	#78.,R.PUT	; R.PUT = 78.
+	CMP	R0,R3		; R.PUT больше ширины?
+	BHI	4$		; да =>
+	MOV	#40,R5		; R5 = пробел
+3$:	IF	-(R1) = R5 THEN 3$ (B)	; Назад по пробелам
+	INC	R1		; R1 -> после текста
+	ADD	R4,R0		; R0 + начало
+	CMP	R1,R0		; Текст кончается раньше?
+	BHIS	4$		; да =>
+	MOV	R0,R1		; R1 = R0
+4$:	SUB	R4,R1		; R1 = число символов
+	BEQ	9$		; нет символов =>
 
-        MOV     #177010,R5
-        MOV     #177024,R3
-        MOV     @#22666,R2
-        MOV     @#22656,(R5)
-        CLR     -(SP)
-5$:     .MOVB   (R4)+,R0
-        CMPB    #40,R0
-        BNE     1$
-        INC     (SP)
-        BR      2$
-1$:     TST     (SP)
-        BEQ     13$
-        CALL    10$
-13$:    CALL    $$PRS
-2$:     SOB     R1,5$
-        TST     (SP)
-        BEQ     15$
-        CALL    10$
-15$:    TST     (SP)+
-9$:     CALL    $POP
-        Return
+	MOV	#177010,R5	; R5 -> регистр адреса
+	MOV	#177024,R3	; R3 -> регистр записи с цветом
+	MOV	@#22666,R2	; Шаг строки развёртки
+	MOV	@#22656,(R5)	; Адрес курсора
+	CLR	-(SP)		; Число пробелов подряд
+5$:	.MOVB	(R4)+,R0	; Символ
+	CMPB	#40,R0		; Пробел?
+	BNE	1$		; нет =>
+	INC	(SP)		; Пробелов + 1
+	BR	2$		; Дальше
+1$:	TST	(SP)		; Были пробелы?
+	BEQ	13$		; нет =>
+	CALL	10$		; Очистить пробелы
+13$:	CALL	$$PRS		; Вывести символ
+2$:	SOB	R1,5$		; Все символы
+	TST	(SP)		; Пробелы в конце?
+	BEQ	15$		; нет =>
+	CALL	10$		; Очистить пробелы
+15$:	TST	(SP)+		; Снять счётчик
+9$:	CALL	$POP		; Вернуть регистры
+	Return			; Выход
 
-10$:    PUSH    <R0,R1>
-        MOV     #11.,R1
+10$:	PUSH	<R0,R1>		; Сохранить R0, R1
+	MOV	#11.,R1		; Строк развёртки: 11.
 
-12$:    MOV     6(SP),R0
-        PUSH    (R5)
-11$:    CLR     (R3)
-        INC     (R5)
-        SOB     R0,11$
-        POP     (R5)
-        ADD     R2,(R5)
-        SOB     R1,12$
-        SUB     #<11.*81.>,(R5)
-        ADD     6(SP),(R5)
-        POP     <R1,R0>
-        CLR     2(SP)
-        RETURN
+12$:	MOV	6(SP),R0	; R0 = число пробелов
+	PUSH	(R5)		; Запомнить адрес
+11$:	CLR	(R3)		; Очистить
+	INC	(R5)		; Следующий адрес
+	SOB	R0,11$		; Все пробелы
+	POP	(R5)		; Вернуть адрес
+	ADD	R2,(R5)		; Следующая строка развёртки
+	SOB	R1,12$		; Все 11.
+	SUB	#<11.*81.>,(R5)	; Назад на 11. строк
+	ADD	6(SP),(R5)	; Плюс пробелов
+	POP	<R1,R0>		; Вернуть R1, R0
+	CLR	2(SP)		; Счётчик = 0
+	RETURN			; Выход
 
+; $$PRS - вывести образ знака R0 (11. строк развёртки, шрифт 14142) записью с
+; цветом
 $$PRS:
-        ASL     R0
-        MOV     14142(R0),R0
-        PUSH    R1
-        .REPT   11.
-        MOVB    (R0)+,R1
-        MOV     R1,(R3)
-        ADD     R2,(R5)
-        .ENDR
-        SUB     #<11.*81.>-1,(R5)
-        POP     R1
-        RETURN
+	ASL	R0		; Индекс образа * 2
+	MOV	14142(R0),R0	; R0 -> образ символа
+	PUSH	R1		; Запомнить R1
+	.REPT	11.		; 11. раз:
+	MOVB	(R0)+,R1	; Байт образа
+	MOV	R1,(R3)		; Записать с цветом
+	ADD	R2,(R5)		; К следующей строке развёртки
+	.ENDR
+	SUB	#<11.*81.>-1,(R5)	; Назад к началу строки
+	POP	R1		; Вернуть R1
+	RETURN			; Выход
 
+; EMT42 - вывести знак R0 в позицию курсора (как EMT 42 ПП)
 EMT42::
-        PUSH    <R5,R3,R2,R0>
-        MOV     #177010,R5
-        MOV     #177024,R3
-        MOV     @#22656,(R5)
-        MOV     @#22666,R2
-        CALL    $$PRS
-        POP     <R0,R2,R3,R5>
-        Return
+	PUSH	<R5,R3,R2,R0>	; Сохранить регистры
+	MOV	#177010,R5	; R5 -> регистр адреса
+	MOV	#177024,R3	; R3 -> регистр записи с цветом
+	MOV	@#22656,(R5)	; Адрес курсора
+	MOV	@#22666,R2	; Шаг строки развёртки
+	CALL	$$PRS		; Вывести знак
+	POP	<R0,R2,R3,R5>	; Вернуть регистры
+	Return			; Выход
 
 
 
+; $HLLC - R3 = слово таблицы строк на уровне бегунка
 $HLLC::
-        PUSH    R0
-        MOV     @#2626,R0
-        SUB     #54,R0
-        CMP     R0,#2630
-        BCC     5$
-        ADD     #1634,R0
-5$:     MOV     (R0),R3
-        POP     R0
-        RETURN
+	PUSH	R0		; Сохранить R0
+	MOV	@#2626,R0	; Системная ячейка 2626
+	SUB	#54,R0		; Минус 54
+	CMP	R0,#2630	; До начала таблицы?
+	BCC	5$		; нет =>
+	ADD	#1634,R0	; Плюс 1634
+5$:	MOV	(R0),R3		; R3 = слово
+	POP	R0		; Вернуть R0
+	RETURN			; Выход
 
+; $C.PRT - индикатор "столбец:строка" и режим "Лат"/"Рус" в рамке
 $C.PRT::
-        COLOR   CYAN,BLUE
-        MOVB    #377,C.MOVE
-        MOV     #TTBUF+11.,R4
-        MOV     #11.,R0
-1$:     MOVB    #'═,-(R4)
-        SOB     R0,1$
-        MOV     R4,@#T1PTR
-        CMP     (R4)+,(R4)+
-        MOVB    #':,(R4)
-        MOV     ED.X,R1
-        ADD     ROL.HD,R1
-        CALL    $D.CNV
-REL     MOV     #DEC.BF+6,R5
-2$:     MOVB    -(R5),-(R4)
-        CMPB    #40,(R4)
-        BNE     2$
-        MOV     ED.Y,R1
-        ADD     ROL.GD,R1
-        CALL    $D.CNV
-        MOV     #TTBUF+5,R4
-3$:     MOVB    (R5)+,(R4)+
-        CMPB    #40,-1(R4)
-        BNE     3$
-        JSR     R4,$$LC
-        .BYTE   22.,4.
-        MOV     #TTBUF+11.,R1
-        CALL    $$PR
-        LOC     76.,0.
-REL     MOV     #TLT,R1
-        TST     RSLT
-        BEQ     4$
-        ADD     #TRS-TLT,R1
-4$:     COLOR   (R1)+
-        CALL    PR
-        RETURN
+	COLOR	CYAN,BLUE	; Цвет
+	MOVB	#377,C.MOVE	; Курсор двигается
+	MOV	#TTBUF+11.,R4	; R4 -> конец строки индикатора
+	MOV	#11.,R0		; Знаков 11.
+1$:	MOVB	#'═,-(R4)	; Знак "═"
+	SOB	R0,1$		; Все
+	MOV	R4,@#T1PTR	; T1PTR = начало
+	CMP	(R4)+,(R4)+	; Пропустить 2 слова
+	MOVB	#':,(R4)	; Двоеточие
+	MOV	ED.X,R1		; Столбец
+	ADD	ROL.HD,R1	; плюс сдвиг окна
+	CALL	$D.CNV		; Число - в текст
+REL	MOV	#DEC.BF+6,R5	; R5 -> конец числа
+2$:	MOVB	-(R5),-(R4)	; Цифры - в строку
+	CMPB	#40,(R4)	; Пока не пробел
+	BNE	2$		; Дальше
+	MOV	ED.Y,R1		; Строка
+	ADD	ROL.GD,R1	; плюс ROL.GD
+	CALL	$D.CNV		; Число - в текст
+	MOV	#TTBUF+5,R4	; R4 -> начало строки
+3$:	MOVB	(R5)+,(R4)+	; Цифры - в строку
+	CMPB	#40,-1(R4)	; Пока не пробел
+	BNE	3$		; Дальше
+	JSR	R4,$$LC		; Позиция (22., 4.)
+	.BYTE	22.,4.
+	MOV	#TTBUF+11.,R1	; R1 -> начало
+	CALL	$$PR		; Вывести
+	LOC	76.,0.		; Позиция (76., 0.)
+REL	MOV	#TLT,R1		; R1 -> "Лат"
+	TST	RSLT		; Режим РУС?
+	BEQ	4$		; нет =>
+	ADD	#TRS-TLT,R1	; R1 -> "Рус"
+4$:	COLOR	(R1)+		; Цвет надписи
+	CALL	PR		; Вывести
+	RETURN			; Выход
 
+;------------------------------------------------------------------------------
+; $BTTST - символ R0 (0-177) по карте BITMAP: C = 0 - символ слова (буква,
+; цифра), C = 1 - разделитель
+;------------------------------------------------------------------------------
 $BTTST::
-        PUSH    <R0,R1,R2>
-        BIC     #177600,R0
-        MOV     R0,R1
-        ASH     #-3,R0
-        BIC     #177760,R1
-        MOV     #1,R2
-        BIC     R2,R0
-        ASH     R1,R2
-        CLC
-        .WORD   30260
-REL     .WORD   BITMAP
-        BNE     1$
-        SEC
-1$:     POP     <R2,R1,R0>
-        RETURN
+	PUSH	<R0,R1,R2>	; Сохранить регистры
+	BIC	#177600,R0	; R0 = код символа (0-177)
+	MOV	R0,R1		; R1 = R0
+	ASH	#-3,R0		; R0 = номер слова карты
+	BIC	#177760,R1	; R1 = номер бита
+	MOV	#1,R2		; Маска
+	BIC	R2,R0		; Выровнять слово
+	ASH	R1,R2		; Маска бита
+	CLC			; C = 0
+	.WORD	30260		; BIT BITMAP(R0),R2: бит символа
+REL	.WORD	BITMAP		; Адрес BITMAP
+	BNE	1$		; Бит = 1 (символ слова) => C = 0
+	SEC			; Разделитель: C = 1
+1$:	POP	<R2,R1,R0>	; Вернуть регистры
+	RETURN			; Выход
 
-$FND::                                  ; R1 - АДРЕС
-        MOV     FSW3,R0
-        DEC     R0
-        BMI     1$
-        BEQ     2$
-        CALL    $GETLP
-        ADD     LB.PTR,R0
-        SUB     #LBUF,R0
-        BR      4$
-1$:     MOV     UP.PTR,R0
-        BR      4$
-2$:     MOV     DN.PTR,R0
-4$:     MOV     R0,@#177010
-REL     MOV     #FDBUF+40.,R3
-1$:     CMPB    #40,-(R3)
-        BEQ     1$
-
-
-REL     MOV     #FDBUF,R0
-        SUB     R0,R3
-        BMI     10$
-        INC     R3
-        CALL    $LCASE
-        MOV     #1,R2
-        TST     FSW1
-        BEQ     5$
-        NEG     R2
-5$:     MOV     #177012,R5
-        MOV     #177010,R4
-        ADD     R2,(R4)
-4$:     PUSH    <(R4),R0,R3>
-3$:     MOV     (R5),R1
-        INC     (R4)
-        CALL    $CCNV
-        CMPB    (R0)+,R1
-        BNE     2$
-        SOB     R3,3$
-        MOV     (R4),R0
-6$:     POP     R3
-        CMP     (SP)+,(SP)+
-        CLC
-        RETURN                          ; НАШЕЛ
-2$:     POP     <R3,R0,(R4)>
-1$:     ADD     R2,(R4)
-        TST     R2
-        BMI     9$
-        CMP     (R4),DN.PTR
-        BLO     4$
-10$:    SEC
-        RETURN
-9$:     CMP     (R4),UP.PTR
-        BHI     4$
-        BR      10$
-$LCASE: PUSH    R3
-1$:     MOVB    (R0),R1
-        CALL    $CCNV
-        MOVB    R1,(R0)+
-        SOB     R3,1$
-        POP     R3
-        SUB     R3,R0
-$CCNV:  BIT     #3,FSW4
-        BEQ     4$
-1$:     BIT     #1,FSW4
-        BEQ     2$
-        CMPB    R1,#300
-        BLE     2$
-        BIC     #200,R1
-2$:     BIT     #2,FSW4
-        BEQ     4$
-        CMPB    R1,#77
-        BLOS    4$
-        BIC     #40,R1
-4$:     RETURN
+;------------------------------------------------------------------------------
+; $FND - поиск образца FDBUF от курсора (FSW3: 0 сверху, 1 снизу, 2 от курсора;
+; FSW1 - назад; FSW4 - регистр): C = 0 - найден, R0 -> за найденным; C = 1 - нет
+;------------------------------------------------------------------------------
+$FND::				; R1 - АДРЕС
+	MOV	FSW3,R0		; Режим поиска (FSW3)
+	DEC	R0		; Минус 1
+	BMI	1$		; С начала текста =>
+	BEQ	2$		; С конца текста =>
+	CALL	$GETLP		; R0 -> строка курсора
+	ADD	LB.PTR,R0	; Плюс курсор
+	SUB	#LBUF,R0	; Минус LBUF
+	BR	4$		; Начало поиска
+1$:	MOV	UP.PTR,R0	; Начало текста
+	BR	4$		; Начало поиска
+2$:	MOV	DN.PTR,R0	; Конец текста
+4$:	MOV	R0,@#177010	; Адрес - в окно
+REL	MOV	#FDBUF+40.,R3	; R3 -> конец образца
+1$:	CMPB	#40,-(R3)	; Образец без пробелов в конце
+	BEQ	1$		; Дальше
 
 
-$GABSN::PUSH    R3                      ; ПРОЦЕДУРА ВЫДАЧИ НОМЕРА СТРОКИ
-                                        ; УКАЗАТЕЛЮ
-                                        ; ВХОД R0 -> СТРОКА
-                                        ; ВЫХОД R1 = НОМЕР
-                                        ; R0 -> НАЧАЛО СТРОКИ
-                                        ; ВЫЧИСЛЕНИЕ БЛИЖАЙЩЕГО УКАЗАТЕЛЯ
-                                        ; С ИЗВЕСТНЫМ НОМЕРОМ СТРОКИ
-        MOV     #177010,R4
-        MOV     #177012,R5
-        MOV     SL.PTR,(R4)
-        MOV     ROL.GD,R1
-        CMP     (R4),R0
-        BEQ     11$
-        BHI     10$
-2$:     MOV     (R4),R3
-        DEC     (R4)
-1$:     INC     (R4)
-        TST     (R5)
-        BNE     1$
-        CMP     (R4),R0
-        BHIS    3$
-        INC     R1
-        INC     (R4)
-        BR      2$
-3$:     MOV     R3,R0
-11$:    POP     R3
-        RETURN
-10$:    DEC     (R4)
-13$:    DEC     R1
-12$:    DEC     (R4)
-        TSTB    (R5)
-        BNE     12$
-        CMP     (R4),R0
-        BHI     13$
-        MOV     (R4),R0
-        INC     R0
-        BR      11$
+REL	MOV	#FDBUF,R0	; R0 -> образец
+	SUB	R0,R3		; R3 = длина - 1
+	BMI	10$		; Пустой =>
+	INC	R3		; R3 = длина
+	CALL	$LCASE		; Образец - в нижний регистр
+	MOV	#1,R2		; Шаг вперёд
+	TST	FSW1		; Назад?
+	BEQ	5$		; нет =>
+	NEG	R2		; Шаг назад
+5$:	MOV	#177012,R5	; R5 -> регистр байта
+	MOV	#177010,R4	; R4 -> регистр адреса
+	ADD	R2,(R4)		; Начало поиска + шаг
+4$:	PUSH	<(R4),R0,R3>	; Запомнить позицию и образец
+3$:	MOV	(R5),R1		; Символ текста
+	INC	(R4)		; Следующий адрес
+	CALL	$CCNV		; Привести регистр
+	CMPB	(R0)+,R1	; Совпадает с образцом?
+	BNE	2$		; нет =>
+	SOB	R3,3$		; Все символы образца
+	MOV	(R4),R0		; Адрес найденного
+6$:	POP	R3		; Снять длину
+	CMP	(SP)+,(SP)+	; Снять два слова
+	CLC			; Найдено: C = 0
+	RETURN			; НАШЕЛ
+2$:	POP	<R3,R0,(R4)>	; Вернуть позицию
+1$:	ADD	R2,(R4)		; Следующая позиция
+	TST	R2		; Шаг назад?
+	BMI	9$		; да =>
+	CMP	(R4),DN.PTR	; Конец текста?
+	BLO	4$		; нет => дальше
+10$:	SEC			; Не найдено: C = 1
+	RETURN			; Выход
+9$:	CMP	(R4),UP.PTR	; Начало текста?
+	BHI	4$		; нет => дальше
+	BR	10$		; Не найдено
+; $LCASE - образец в нужный регистр; $CCNV - символ R1 по FSW4
+$LCASE:	PUSH	R3		; Запомнить R3
+1$:	MOVB	(R0),R1		; Символ образца
+	CALL	$CCNV		; Привести регистр
+	MOVB	R1,(R0)+	; Записать
+	SOB	R3,1$		; Все символы
+	POP	R3		; Вернуть R3
+	SUB	R3,R0		; R0 -> образец
+$CCNV:	BIT	#3,FSW4		; Режим поиска FSW4: бит 1 или 2?
+	BEQ	4$		; нет => без изменений
+1$:	BIT	#1,FSW4		; Бит 1 (РУС/ЛАТ): без учёта регистра
+	BEQ	2$		; нет =>
+	CMPB	R1,#300		; Код > 300?
+	BLE	2$		; нет =>
+	BIC	#200,R1		; Убрать старший бит
+2$:	BIT	#2,FSW4		; Бит 2 (ВР/НР): латинские буквы
+	BEQ	4$		; нет =>
+	CMPB	R1,#77		; Код не буква?
+	BLOS	4$		; да =>
+	BIC	#40,R1		; В верхний регистр
+4$:	RETURN			; Выход
+
+
+$GABSN::PUSH	R3		; ПРОЦЕДУРА ВЫДАЧИ НОМЕРА СТРОКИ
+					; УКАЗАТЕЛЮ
+					; ВХОД R0 -> СТРОКА
+					; ВЫХОД R1 = НОМЕР
+					; R0 -> НАЧАЛО СТРОКИ
+					; ВЫЧИСЛЕНИЕ БЛИЖАЙЩЕГО УКАЗАТЕЛЯ
+					; С ИЗВЕСТНЫМ НОМЕРОМ СТРОКИ
+	MOV	#177010,R4	; R4 -> регистр адреса
+	MOV	#177012,R5	; R5 -> регистр байта
+	MOV	SL.PTR,(R4)	; Адрес первой видимой строки
+	MOV	ROL.GD,R1	; R1 = ROL.GD (её номер)
+	CMP	(R4),R0		; Искомый адрес?
+	BEQ	11$		; совпало =>
+	BHI	10$		; искомый выше =>
+2$:	MOV	(R4),R3		; Адрес начала строки
+	DEC	(R4)		; Назад
+1$:	INC	(R4)		; Вперёд
+	TST	(R5)		; Байт
+	BNE	1$		; до нуля
+	CMP	(R4),R0		; Прошли искомый адрес?
+	BHIS	3$		; да =>
+	INC	R1		; Номер строки + 1
+	INC	(R4)		; Пропустить нуль
+	BR	2$		; Дальше
+3$:	MOV	R3,R0		; R0 = начало строки
+11$:	POP	R3		; Вернуть R3
+	RETURN			; Выход
+10$:	DEC	(R4)		; Назад
+13$:	DEC	R1		; Номер - 1
+12$:	DEC	(R4)		; Назад
+	TSTB	(R5)		; Байт
+	BNE	12$		; до нуля
+	CMP	(R4),R0		; Дошли до искомого?
+	BHI	13$		; нет =>
+	MOV	(R4),R0		; R0 = начало строки
+	INC	R0		; Пропустить нуль
+	BR	11$		; Готово
 
 
 
+; $GABSP - R0 -> строка номер R1 в тексте (R1 ограничен числом строк)
 $GABSP::
-        CMP     R1,MX.LIN
-        BLOS    2$
-        BGE     3$
-        CLR     R1
-        BR      2$
-3$:     MOV     MX.LIN,R1
+	CMP	R1,MX.LIN	; Номер больше числа строк?
+	BLOS	2$		; нет =>
+	BGE	3$		; Больше =>
+	CLR	R1		; Номер < 0: 0
+	BR	2$		; Дальше
+3$:	MOV	MX.LIN,R1	; Номер = последняя строка
 
 
 
-2$:     PUSH    R3
-        MOV     #177010,R4
-        MOV     #177012,R5
-        MOV     SL.PTR,(R4)
-        MOV     ROL.GD,R3
-        CMP     R3,R1
-        BHIS    10$
+2$:	PUSH	R3		; Сохранить R3
+	MOV	#177010,R4	; R4 -> регистр адреса
+	MOV	#177012,R5	; R5 -> регистр байта
+	MOV	SL.PTR,(R4)	; Адрес первой видимой строки
+	MOV	ROL.GD,R3	; Её номер
+	CMP	R3,R1		; Искомая выше?
+	BHIS	10$		; да =>
 
-        TST     -(SP)
+	TST	-(SP)		; Место для адреса
 
-        DEC     (R4)
-        DEC     R3
+	DEC	(R4)		; Назад
+	DEC	R3		; Номер - 1
 
-5$:     INC     R3
-        MOV     (R4),(SP)
-1$:     INC     (R4)
-        TST     (R5)
-        BNE     1$
-        CMP     R3,R1
-        BNE     5$
-        POP     <R0,R3>
-        INC     R0
-        RETURN
+5$:	INC	R3		; Номер + 1
+	MOV	(R4),(SP)	; Запомнить адрес строки
+1$:	INC	(R4)		; Вперёд
+	TST	(R5)		; Байт
+	BNE	1$		; до нуля
+	CMP	R3,R1		; Номер совпал?
+	BNE	5$		; нет =>
+	POP	<R0,R3>		; R0 = адрес строки, R3
+	INC	R0		; Начало строки
+	RETURN			; Выход
 
 
 
 10$:
-        DEC     (R4)
-13$:    CMP     R3,R1
-        BEQ     11$
+	DEC	(R4)		; Назад
+13$:	CMP	R3,R1		; Номер совпал?
+	BEQ	11$		; да =>
 
-        DEC     R3
+	DEC	R3		; Номер - 1
 
-12$:    DEC     (R4)
-        TSTB    (R5)
-        BNE     12$
-        BR      13$
+12$:	DEC	(R4)		; Назад
+	TSTB	(R5)		; Байт
+	BNE	12$		; до нуля
+	BR	13$		; Дальше
 
-11$:    MOV     (R4),R0
-        INC     R0
-        POP     R3
-        RETURN
-
-
+11$:	MOV	(R4),R0		; R0 = адрес
+	INC	R0		; Начало строки
+	POP	R3		; Вернуть R3
+	RETURN			; Выход
 
 
-                                ; ПРЕОБРАЗОВАНИЕ ASCII -> DEC
-                                ; ВХОД : R2 -> СТРОКА
-                                ; ВЫХОД : R5 = ЧИСЛО
-                                ; БИТ C = 1 , ЕСЛИ ОШИБКА
+
+
+				; ПРЕОБРАЗОВАНИЕ ASCII -> DEC
+				; ВХОД : R2 -> СТРОКА
+				; ВЫХОД : R5 = ЧИСЛО
+				; БИТ C = 1 , ЕСЛИ ОШИБКА
 $DEC.C::
-        CLR     R5
-1$:     CMPB    #40,(R2)+
-        BEQ     1$
-        DEC     R2
-2$:     MOVB    (R2)+,R1
-        SUB     #'0,R1
-        BMI     10$
-        CMPB    R1,#9.
-        BHI     10$
-        MUL     #10.,R5
-        ADD     R1,R5
-        BR      2$
-10$:    TSTB    -(R2)
-        BEQ     12$
-        CMPB    #40,(R2)
-        BEQ     12$
-11$:    SEC
-        RETURN
-12$:    CLC
-        RETURN
+	CLR	R5		; Число = 0
+1$:	CMPB	#40,(R2)+	; Пропустить пробелы
+	BEQ	1$		; Дальше
+	DEC	R2		; R2 -> первая цифра
+2$:	MOVB	(R2)+,R1	; Символ
+	SUB	#'0,R1		; Цифра
+	BMI	10$		; Не цифра =>
+	CMPB	R1,#9.		; Больше 9?
+	BHI	10$		; да =>
+	MUL	#10.,R5		; Число * 10.
+	ADD	R1,R5		; Плюс цифра
+	BR	2$		; Дальше
+10$:	TSTB	-(R2)		; Нуль?
+	BEQ	12$		; да => верно
+	CMPB	#40,(R2)	; Пробел?
+	BEQ	12$		; да => верно
+11$:	SEC			; Ошибка: C = 1
+	RETURN			; Выход
+12$:	CLC			; Успех: C = 0
+	RETURN			; Выход
 
 
-LCLNUM::                                ; УСТАНОВКА НА СТРОКУ С АБСОЛЮТНЫМ
-                                        ; НОМЕРОМ
-                                        ; ВХОД : R1 = НОМЕР СТРОКИ
-                                        ;        R0 -> НАЧАЛО СТРОКИ
+LCLNUM::			; УСТАНОВКА НА СТРОКУ С АБСОЛЮТНЫМ
+					; НОМЕРОМ
+					; ВХОД : R1 = НОМЕР СТРОКИ
+					;        R0 -> НАЧАЛО СТРОКИ
 
-        CMP     R1,MX.LIN
-        BLOS    6$
-        BGE     7$
-        CLR     R1
-        BR      6$
-7$:     MOV     MX.LIN,R1
-6$:     CALL    $CUROF
-        MOV     ROL.GD,R4
-        CMP     R4,R1
-        BHI     3$
-        ADD     #20.,R4
-        CMP     R4,R1
-        BLOS    3$
-        MOV     R1,R0
-        ADD     #20.,R0
-        SUB     R4,R0
-        MOV     R0,ED.Y
-        BR      4$
-
-
-3$:     PUSH    <R2,R3>
-        COLOR   YELLOW,BLUE
-        MOV     ED.Y,R2
-        CMP     R2,R1
-        BHI     1$
-        SUB     R2,R1
-        BR      2$
-1$:     CLR     R2
-2$:     CALL    $GABSP
-        MOV     R0,SL.PTR
-        MOV     R1,ROL.GD
-        CLR     ED.Y
-        CALL    $TOUT
-        MOV     R2,ED.Y
-        POP     <R3,R2>
-4$:     CALL    $CURON
-
-        RETURN
+	CMP	R1,MX.LIN	; Номер больше числа строк?
+	BLOS	6$		; нет =>
+	BGE	7$		; Больше =>
+	CLR	R1		; Номер < 0: 0
+	BR	6$		; Дальше
+7$:	MOV	MX.LIN,R1	; Номер = последняя строка
+6$:	CALL	$CUROF		; Выключить курсор
+	MOV	ROL.GD,R4	; R4 = ROL.GD
+	CMP	R4,R1		; Строка выше окна?
+	BHI	3$		; да =>
+	ADD	#20.,R4		; R4 = низ окна
+	CMP	R4,R1		; Строка ниже?
+	BLOS	3$		; да =>
+	MOV	R1,R0		; Строка в окне
+	ADD	#20.,R0		; Плюс 20.
+	SUB	R4,R0		; Минус низ
+	MOV	R0,ED.Y		; ED.Y = номер в окне
+	BR	4$		; Дальше
 
 
-FKJMP:                                  ; Переход по функциональной клавише
-        CALL    $LPUT                   ; Сохранить строку текста
-        CLRB    C.MOVE                  ; Запретить перемещение курсора
-        CALL    $CUROFF                 ; Выключить курсор
-        TST     (SP)+
-        MUL     #12,R5
-        SUB     #204,R0
-        ASL     R0
-        ADD     R0,R5
-REL     CALL    @TFK(R5)
+3$:	PUSH	<R2,R3>		; Сохранить R2, R3
+	COLOR	YELLOW,BLUE	; Цвет
+	MOV	ED.Y,R2		; R2 = строка курсора
+	CMP	R2,R1		; Строка выше?
+	BHI	1$		; да =>
+	SUB	R2,R1		; Разница
+	BR	2$		; Дальше
+1$:	CLR	R2		; Строка 0
+2$:	CALL	$GABSP		; Адрес строки R1
+	MOV	R0,SL.PTR	; SL.PTR = её адрес
+	MOV	R1,ROL.GD	; ROL.GD = её номер
+	CLR	ED.Y		; ED.Y = 0
+	CALL	$TOUT		; Вывести текст
+	MOV	R2,ED.Y		; Строка курсора
+	POP	<R3,R2>		; Вернуть R3, R2
+4$:	CALL	$CURON		; Включить курсор
 
-$$1:    CALL    $CURON
-        CALL    $LCOP
-        JMP     $$RS
-
-RTS:    RETURN
+	RETURN			; Выход
 
 
+; FKJMP - F1-F10: по таблице TFK (5 строк по 10 слов, модификатор R5), вызов с
+; REL
+FKJMP:				; Переход по функциональной клавише
+	CALL	$LPUT		; Сохранить строку текста
+	CLRB	C.MOVE		; Запретить перемещение курсора
+	CALL	$CUROFF		; Выключить курсор
+	TST	(SP)+
+	MUL	#12,R5		; R5 = R5 * 10. (запись TFK)
+	SUB	#204,R0		; Минус FK1
+	ASL	R0		; Индекс клавиши * 2
+	ADD	R0,R5		; Плюс строка таблицы
+REL	CALL	@TFK(R5)	; Вызвать обработчик клавиши
+
+$$1:	CALL	$CURON		; Включить курсор
+	CALL	$LCOP		; Скопировать строку
+	JMP	$$RS		; Назад в редактор
+
+RTS:	RETURN			; Пустая процедура
+
+
+; ALJMP - Alt-буква: Alt-X - выход (F19), иначе пункт меню по букве из Uak
 ALJMP::
-        Call    $Lput
-        BIC     #240,R0
-        CMPB    #'X,R0
-        BNE     1$
-        Tst     (Sp)+
-        Call    $CurOf
-        Call    F19
-        Call    $CurOn
-        Jmp     $$Rs
+	Call	$Lput		; Сохранить строку
+	BIC	#240,R0		; Убрать регистр и ALT
+	CMPB	#'X,R0		; Alt-X?
+	BNE	1$		; нет =>
+	Tst	(Sp)+		; Снять возврат
+	Call	$CurOf		; Выключить курсор
+	Call	F19		; Выход (F19)
+	Call	$CurOn		; Включить курсор
+	Jmp	$$Rs		; Назад в редактор
 
-1$:
-Rel     Mov     #UAk,r5
-        Clr     r4
-1$:     Tstb    (r5)
-        Beq     2$
-        Cmpb    r0,(r5)+
-        Beq     3$
-        Inc     r4
-        Br      1$
-2$:     Return
+1$:				; Alt-буква
+Rel	Mov	#UAk,r5		; R5 -> буквы меню (Uak)
+	Clr	r4		; R4 = номер
+1$:	Tstb	(r5)		; Конец списка?
+	Beq	2$		; да =>
+	Cmpb	r0,(r5)+	; Буква совпала?
+	Beq	3$		; да =>
+	Inc	r4		; Номер + 1
+	Br	1$		; Дальше
+2$:	Return			; Нет такой: выход
 
-3$:     Mov     r4,Wpnt
-Rel     Mov     #Main,R4
-        Mov     #177777,EntFlg
-        Tst     (Sp)+
-        Call    UpMn1
-        Jmp     $$1
-
-
+3$:	Mov	r4,Wpnt		; Номер пункта меню
+Rel	Mov	#Main,R4	; R4 -> меню
+	Mov	#177777,EntFlg	; Режим открытого окна
+	Tst	(Sp)+		; Снять возврат
+	Call	UpMn1		; Открыть меню (UpMn1)
+	Jmp	$$1		; Назад в редактор
 
 
 
@@ -1396,10 +1468,13 @@ Rel     Mov     #Main,R4
 
 
 
+
+
+; JKN9 - F10 с модификатором 0: открыть верхнее меню
 JKN9:
-        TST     (SP)+
-REL     UPMENU  #MAIN
-        JMP     $$1
+	TST	(SP)+		; Снять возврат
+REL	UPMENU	#MAIN		; Меню
+	JMP	$$1		; Назад в редактор
 
 
 
@@ -1412,27 +1487,28 @@ REL     UPMENU  #MAIN
 
 
 
-.PSECT  DATA
-TLT:    .COLOR  BLUE,CYAN
-        .ASCIZ  /Лат/
-TRS:    .COLOR  BLUE,YELLOW
-        .ASCIZ  /Рус/
+; TLT, TRS - надписи режима; Uak - буквы Alt-меню; TFK - обработчики F1-F10
+.PSECT	DATA			; Данные
+TLT:	.COLOR	BLUE,CYAN	; Цвет "Лат"
+	.ASCIZ	/Лат/		; Надпись РЕЖИМ
+TRS:	.COLOR	BLUE,YELLOW	; Цвет "Рус"
+	.ASCIZ	/Рус/		; Надпись РЕЖИМ
 Uak:
 
-.If     Eq      Version-Beta
-        .Asciz  /TIESRCDOWH/
+.If	Eq      Version-Beta
+	.Asciz	/TIESRCDOWH/
 .Iff
-        .Asciz  /=IPKNS/
+	.Asciz	/=IPKNS/
 .EndC
-        .Even
+	.Even
 
 TFK:
 
-REL     .WORD   <O1Hlp,F13  ,F11  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,JKN9 >
-REL     .WORD   <O2Hlp,F02  ,F03  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,F01  >
-REL     .WORD   <O3Hlp,F45  ,RTS  ,F61  ,RTS  ,RTS  ,RTS  ,RTS  ,F41  ,RTS  >
-REL     .WORD   <O4Hlp,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  >
-REL     .WORD   <O5Hlp,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,F51  ,RTS  >
+REL	.WORD	<O1Hlp,F13  ,F11  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,JKN9 >
+REL	.WORD	<O2Hlp,F02  ,F03  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,F01  >
+REL	.WORD	<O3Hlp,F45  ,RTS  ,F61  ,RTS  ,RTS  ,RTS  ,RTS  ,F41  ,RTS  >
+REL	.WORD	<O4Hlp,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  >
+REL	.WORD	<O5Hlp,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,F51  ,RTS  >
 
 
 
@@ -1442,65 +1518,65 @@ REL     .WORD   <O5Hlp,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,RTS  ,F51  ,RTS  >
 
 
 
-EDJMP:: .BYTE   12.,LEFT,RIGHT,UP,DOWN,ENTER
-        .BYTE   DEL,RUS,LAT,INS,31,10,27
-        .EVEN
+EDJMP::	.BYTE	12.,LEFT,RIGHT,UP,DOWN,ENTER	; Клавиш 12. (влево...Enter)
+	.BYTE	DEL,RUS,LAT,INS,31,10,27	; Del, РУС, ЛАТ, Ins...
+	.EVEN			; Выровнять
 
-REL     .WORD   $EDL
-REL     .WORD   $EDR
-REL     .WORD   $EDU
-REL     .WORD   $EDD
-REL     .WORD   $EDE
-REL     .WORD   $EDDL
-REL     .WORD   $EDRS
-REL     .WORD   $EDLT
-REL     .WORD   $EDI
-REL     .WORD   $EDCY
-REL     .WORD   $EDCN
-REL     .WORD   $EDCW
+REL	.WORD	$EDL		; Влево
+REL	.WORD	$EDR		; Вправо
+REL	.WORD	$EDU		; Вверх
+REL	.WORD	$EDD		; Вниз
+REL	.WORD	$EDE		; Enter
+REL	.WORD	$EDDL		; Забой
+REL	.WORD	$EDRS		; РУС
+REL	.WORD	$EDLT		; ЛАТ
+REL	.WORD	$EDI		; Ins
+REL	.WORD	$EDCY		; Ctrl-Y
+REL	.WORD	$EDCN		; Ctrl-N
+REL	.WORD	$EDCW		; Ctrl-W
 
-REL     .WORD   $EDS
+REL	.WORD	$EDS		; Прочие коды
 
 
 L.REG:
-REL     .WORD   $CR.LF                  ; NORMAL
-REL     .WORD   $CR.DL                  ; SHIFT
-REL     .WORD   $CR.LD                  ; CTRL
-REL     .WORD   $RET                    ; GRAF
-REL     .WORD   $CR.LS                  ; ALT
+REL	.WORD	$CR.LF		; NORMAL
+REL	.WORD	$CR.DL		; SHIFT
+REL	.WORD	$CR.LD		; CTRL
+REL	.WORD	$RET		; GRAF
+REL	.WORD	$CR.LS		; ALT
 
 R.REG:
-REL     .WORD   $CR.RG
-REL     .WORD   $CR.IN
-REL     .WORD   $CR.RD
-REL     .WORD   $RET
-REL     .WORD   $CR.RS
+REL	.WORD	$CR.RG
+REL	.WORD	$CR.IN
+REL	.WORD	$CR.RD
+REL	.WORD	$RET
+REL	.WORD	$CR.RS
 
 U.REG:
-REL     .WORD   $CR.UP
-REL     .WORD   $RET
-REL     .WORD   $TX.UP
-REL     .WORD   $SR.UP
-REL     .WORD   $PG.UP
+REL	.WORD	$CR.UP
+REL	.WORD	$RET
+REL	.WORD	$TX.UP
+REL	.WORD	$SR.UP
+REL	.WORD	$PG.UP
 
 D.REG:
-REL     .WORD   $CR.DN
-REL     .WORD   $RET
-REL     .WORD   $TX.DN
-REL     .WORD   $SR.DN
-REL     .WORD   $PG.DN
+REL	.WORD	$CR.DN
+REL	.WORD	$RET
+REL	.WORD	$TX.DN
+REL	.WORD	$SR.DN
+REL	.WORD	$PG.DN
 
-BITMAP::                                ; БИТОВАЯ КАРТА СИМВОЛОВ РАЗДЕЛИТЕЛЕЙ
-        .WORD   ^B0000000000000000
-        .WORD   ^B0000000000000000
-        .WORD   ^B0110110010110010
-        .WORD   ^B1101011111111111
-        .WORD   ^B1111111111111111
-        .WORD   ^B1001011111111111
-        .WORD   ^B1111111111111111
-        .WORD   ^B0000011111111111
+; BITMAP - карта символов слова: бит 1 - буква или цифра, 0 - разделитель
+BITMAP::			; БИТОВАЯ КАРТА СИМВОЛОВ РАЗДЕЛИТЕЛЕЙ
+	.WORD	^B0000000000000000	; Коды 0-17
+	.WORD	^B0000000000000000	; Коды 20-37
+	.WORD	^B0110110010110010	; Коды 40-57
+	.WORD	^B1101011111111111	; Коды 60-77
+	.WORD	^B1111111111111111	; Коды 100-117
+	.WORD	^B1001011111111111	; Коды 120-137
+	.WORD	^B1111111111111111	; Коды 140-157
+	.WORD	^B0000011111111111	; Коды 160-177
 
 
 
-        .END
-        
+	.END			; Конец

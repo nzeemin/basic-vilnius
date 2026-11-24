@@ -1,4 +1,22 @@
-﻿
+﻿;------------------------------------------------------------------------------
+; TABL - таблицы поиска ключевых слов Бейсика: деревья операторов (L0000,
+; номера из TAB.TXT) и функций (F0000, из TABF.TXT). Файл создан генератором (в
+; каталоге его нет); комментарии к хвостам добавлены вручную и при
+; перегенерации пропадут. Корень - 32 слова по первой букве (@..._): 0 - слов
+; нет, иначе адрес списка узлов. Узел - слово: младшие 5 бит - буква, остальные
+; - смещение в байтах до следующего списка узлов или хвоста (адрес цели минус
+; адрес слова) << 5; список упорядочен по буквам, конец - слово -1. Хвост
+; (раздел Tails$): байт - код слова (восьмеричный; в TAB.TXT и TABF.TXT -
+; десятичный), остаток букв, конец: 40 - операторы, 200 - функции. Поиск -
+; SEEK/SEEKOP (PPIO.MAC); код * 2 - индекс подпрограммы. Сверено: деревья дают
+; те же 64 оператора и 38 функций, коды совпадают с TAB.TXT и TABF.TXT
+;------------------------------------------------------------------------------
+
+;------------------------------------------------------------------------------
+; [НОВОЕ] модуль целиком: в Бейсике Вильнюс 1988 нет (таблицы поиска ключевых
+;     слов вместо линейных OPRNAM/AOPNAM)
+;------------------------------------------------------------------------------
+
 	.Psect	Trees$,i
 Trees$::
 
@@ -46,9 +64,9 @@ L0010:	.Word	<'E & 37> ! < L0017-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0017:	.Ascii	<41>/EP/<40>
-L0018:	.Ascii	<46>/OAD/<40>
-L0019:	.Ascii	<47>/AVE/<40>
+L0017:	.Ascii	<41>/EP/<40>	; BEEP (33.)
+L0018:	.Ascii	<46>/OAD/<40>	; BLOAD (38.)
+L0019:	.Ascii	<47>/AVE/<40>	; BSAVE (39.)
 
 	.Psect	Trees$
 L0020:	.Word	<'I & 37> ! < L0176-. * 40>
@@ -57,7 +75,7 @@ L0020:	.Word	<'I & 37> ! < L0176-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0176:	.Ascii	<4>/RCLE/<40>
+L0176:	.Ascii	<4>/RCLE/<40>	; CIRCLE (4.)
 
 	.Psect	Trees$
 L0177:	.Word	<'E & 37> ! < L0199-. * 40>
@@ -66,7 +84,7 @@ L0177:	.Word	<'E & 37> ! < L0199-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0199:	.Ascii	<37>/AR/<40>
+L0199:	.Ascii	<37>/AR/<40>	; CLEAR (31.)
 
 	.Psect	Trees$
 L0200:	.Word	<'A & 37> ! < L0203-. * 40>
@@ -74,10 +92,10 @@ L0200:	.Word	<'A & 37> ! < L0203-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0203:	.Ascii	<102>/D/<40>
-L0204:	.Ascii	<16>/E/<40>
-L0205:	.Byte	42, 40
-L0206:	.Ascii	<43>/LOR/<40>
+L0203:	.Ascii	<102>/D/<40>	; CLOAD (66.)
+L0204:	.Ascii	<16>/E/<40>	; CLOSE (14.)
+L0205:	.Byte	42, 40		; CLS (34.)
+L0206:	.Ascii	<43>/LOR/<40>	; COLOR (35.)
 
 	.Psect	Trees$
 L0207:	.Word	<'A & 37> ! < L0240-. * 40>
@@ -87,7 +105,7 @@ L0207:	.Word	<'A & 37> ! < L0240-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0240:	.Ascii	<35>/TA/<40>
+L0240:	.Ascii	<35>/TA/<40>	; DATA (29.)
 
 	.Psect	Trees$
 L0241:	.Word	<'F & 37> ! < L0244-. * 40>
@@ -95,11 +113,11 @@ L0241:	.Word	<'F & 37> ! < L0244-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0244:	.Byte	5, 40
-L0245:	.Ascii	<66>/AY/<40>
-L0246:	.Ascii	<2>/M/<40>
-L0247:	.Ascii	<22>/AW/<40>
-L0248:	.Ascii	<34>/ND/<40>
+L0244:	.Byte	5, 40		; DEF (5.)
+L0245:	.Ascii	<66>/AY/<40>	; DELAY (54.)
+L0246:	.Ascii	<2>/M/<40>	; DIM (2.)
+L0247:	.Ascii	<22>/AW/<40>	; DRAW (18.)
+L0248:	.Ascii	<34>/ND/<40>	; END (28.)
 
 	.Psect	Trees$
 L0249:	.Word	<'G & 37> ! < L0295-. * 40>
@@ -110,10 +128,10 @@ L0249:	.Word	<'G & 37> ! < L0295-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0295:	.Ascii	<70>/ET/<40>
-L0296:	.Ascii	<72>/OAD/<40>
-L0297:	.Ascii	<6>/R/<40>
-L0298:	.Ascii	<67>/UT/<40>
+L0295:	.Ascii	<70>/ET/<40>	; FGET (56.)
+L0296:	.Ascii	<72>/OAD/<40>	; FLOAD (58.)
+L0297:	.Ascii	<6>/R/<40>	; FOR (6.)
+L0298:	.Ascii	<67>/UT/<40>	; FPUT (55.)
 
 	.Psect	Trees$
 L0299:	.Word	<'A & 37> ! < L0302-. * 40>
@@ -121,8 +139,8 @@ L0299:	.Word	<'A & 37> ! < L0302-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0302:	.Ascii	<71>/VE/<40>
-L0303:	.Ascii	<63>/UND/<40>
+L0302:	.Ascii	<71>/VE/<40>	; FSAVE (57.)
+L0303:	.Ascii	<63>/UND/<40>	; FSOUND (51.)
 
 	.Psect	Trees$
 L0304:	.Word	<'E & 37> ! < L0317-. * 40>
@@ -130,7 +148,7 @@ L0304:	.Word	<'E & 37> ! < L0317-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0317:	.Ascii	<57>/T/<40>
+L0317:	.Ascii	<57>/T/<40>	; GET (47.)
 
 	.Psect	Trees$
 L0318:	.Word	<'S & 37> ! < L0321-. * 40>
@@ -138,8 +156,8 @@ L0318:	.Word	<'S & 37> ! < L0321-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0321:	.Ascii	<7>/UB/<40>
-L0322:	.Ascii	<10>/O/<40>
+L0321:	.Ascii	<7>/UB/<40>	; GOSUB (7.)
+L0322:	.Ascii	<10>/O/<40>	; GOTO (8.)
 
 	.Psect	Trees$
 L0323:	.Word	<'F & 37> ! < L0326-. * 40>
@@ -147,9 +165,9 @@ L0323:	.Word	<'F & 37> ! < L0326-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0326:	.Byte	11, 40
-L0327:	.Ascii	<12>/PUT/<40>
-L0328:	.Ascii	<40>/EY/<40>
+L0326:	.Byte	11, 40		; IF (9.)
+L0327:	.Ascii	<12>/PUT/<40>	; INPUT (10.)
+L0328:	.Ascii	<40>/EY/<40>	; KEY (32.)
 
 	.Psect	Trees$
 L0329:	.Word	<'E & 37> ! < L0342-. * 40>
@@ -159,10 +177,10 @@ L0329:	.Word	<'E & 37> ! < L0342-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0342:	.Ascii	<13>/T/<40>
-L0343:	.Ascii	<3>/NE/<40>
-L0344:	.Ascii	<36>/CATE/<40>
-L0345:	.Ascii	<31>/RINT/<40>
+L0342:	.Ascii	<13>/T/<40>	; LET (11.)
+L0343:	.Ascii	<3>/NE/<40>	; LINE (3.)
+L0344:	.Ascii	<36>/CATE/<40>	; LOCATE (30.)
+L0345:	.Ascii	<31>/RINT/<40>	; LPRINT (25.)
 
 	.Psect	Trees$
 L0346:	.Word	<'E & 37> ! < L0349-. * 40>
@@ -170,8 +188,8 @@ L0346:	.Word	<'E & 37> ! < L0349-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0349:	.Ascii	<17>/XT/<40>
-L0350:	.Ascii	<64>/SOUND/<40>
+L0349:	.Ascii	<17>/XT/<40>	; NEXT (15.)
+L0350:	.Ascii	<64>/SOUND/<40>	; NOSOUND (52.)
 
 	.Psect	Trees$
 L0351:	.Word	<'N & 37> ! < L0358-. * 40>
@@ -180,9 +198,9 @@ L0351:	.Word	<'N & 37> ! < L0358-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0358:	.Byte	32, 40
-L0359:	.Ascii	<14>/EN/<40>
-L0360:	.Ascii	<27>/T/<40>
+L0358:	.Byte	32, 40		; ON (26.)
+L0359:	.Ascii	<14>/EN/<40>	; OPEN (12.)
+L0360:	.Ascii	<27>/T/<40>	; OUT (23.)
 
 	.Psect	Trees$
 L0361:	.Word	<'A & 37> ! < L0488-. * 40>
@@ -197,10 +215,10 @@ L0488:	.Word	<'G & 37> ! < L0495-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0495:	.Ascii	<65>/E/<40>
-L0496:	.Ascii	<20>/NT/<40>
-L0497:	.Ascii	<61>/ETTE/<40>
-L0498:	.Ascii	<26>/KE/<40>
+L0495:	.Ascii	<65>/E/<40>	; PAGE (53.)
+L0496:	.Ascii	<20>/NT/<40>	; PAINT (16.)
+L0497:	.Ascii	<61>/ETTE/<40>	; PALETTE (49.)
+L0498:	.Ascii	<26>/KE/<40>	; POKE (22.)
 
 	.Psect	Trees$
 L0499:	.Word	<'E & 37> ! < L0502-. * 40>
@@ -208,10 +226,10 @@ L0499:	.Word	<'E & 37> ! < L0502-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0502:	.Ascii	<45>/SET/<40>
-L0503:	.Ascii	<21>/NT/<40>
-L0504:	.Ascii	<44>/ET/<40>
-L0505:	.Ascii	<60>/T/<40>
+L0502:	.Ascii	<45>/SET/<40>	; PRESET (37.)
+L0503:	.Ascii	<21>/NT/<40>	; PRINT (17.)
+L0504:	.Ascii	<44>/ET/<40>	; PSET (36.)
+L0505:	.Ascii	<60>/T/<40>	; PUT (48.)
 
 	.Psect	Trees$
 L0506:	.Word	<'E & 37> ! < L0611-. * 40>
@@ -224,11 +242,11 @@ L0611:	.Word	<'A & 37> ! < L0632-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0632:	.Ascii	<25>/D/<40>
-L0633:	.Byte	23, 40
-L0634:	.Ascii	<53>/EAT/<40>
-L0635:	.Ascii	<33>/TORE/<40>
-L0636:	.Ascii	<24>/URN/<40>
+L0632:	.Ascii	<25>/D/<40>	; READ (21.)
+L0633:	.Byte	23, 40		; REM (19.)
+L0634:	.Ascii	<53>/EAT/<40>	; REPEAT (43.)
+L0635:	.Ascii	<33>/TORE/<40>	; RESTORE (27.)
+L0636:	.Ascii	<24>/URN/<40>	; RETURN (20.)
 
 	.Psect	Trees$
 L0637:	.Word	<'C & 37> ! < L0650-. * 40>
@@ -238,12 +256,12 @@ L0637:	.Word	<'C & 37> ! < L0650-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0650:	.Ascii	<50>/REEN/<40>
-L0651:	.Ascii	<73>/ODE/<40>
-L0652:	.Ascii	<62>/UND/<40>
-L0653:	.Ascii	<30>/OP/<40>
-L0654:	.Ascii	<52>/RAP/<40>
-L0655:	.Ascii	<54>/NTIL/<40>
+L0650:	.Ascii	<50>/REEN/<40>	; SCREEN (40.)
+L0651:	.Ascii	<73>/ODE/<40>	; SMODE (59.)
+L0652:	.Ascii	<62>/UND/<40>	; SOUND (50.)
+L0653:	.Ascii	<30>/OP/<40>	; STOP (24.)
+L0654:	.Ascii	<52>/RAP/<40>	; TRAP (42.)
+L0655:	.Ascii	<54>/NTIL/<40>	; UNTIL (44.)
 
 	.Psect	Trees$
 L0656:	.Word	<'E & 37> ! < L0663-. * 40>
@@ -252,9 +270,9 @@ L0656:	.Word	<'E & 37> ! < L0663-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0663:	.Ascii	<56>/ND/<40>
-L0664:	.Ascii	<55>/ILE/<40>
-L0665:	.Ascii	<51>/DTH/<40>
+L0663:	.Ascii	<56>/ND/<40>	; WEND (46.)
+L0664:	.Ascii	<55>/ILE/<40>	; WHILE (45.)
+L0665:	.Ascii	<51>/DTH/<40>	; WIDTH (41.)
 
 	.Psect	Trees$
 L0666:	.Word	<'C & 37> ! < L0712-. * 40>
@@ -268,12 +286,12 @@ L0712:	.Word	<'L & 37> ! < L0715-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-L0715:	.Ascii	<75>/OSE/<40>
-L0716:	.Ascii	<74>/EATE/<40>
-L0717:	.Ascii	<76>/PEN/<40>
-L0718:	.Ascii	<101>/URGE/<40>
-L0719:	.Ascii	<77>/EAD/<40>
-L0720:	.Ascii	<100>/RITE/<40>
+L0715:	.Ascii	<75>/OSE/<40>	; _CLOSE (61.)
+L0716:	.Ascii	<74>/EATE/<40>	; _CREATE (60.)
+L0717:	.Ascii	<76>/PEN/<40>	; _OPEN (62.)
+L0718:	.Ascii	<101>/URGE/<40>	; _PURGE (65.)
+L0719:	.Ascii	<77>/EAD/<40>	; _READ (63.)
+L0720:	.Ascii	<100>/RITE/<40>	; _WRITE (64.)
 
 	.Psect	Trees$,i
 F0000::	.Word	0		; `
@@ -311,10 +329,10 @@ F0010:	.Word	<'B & 37> ! < F0011-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0011:	.Ascii	<16>/S/<200>
-F0012:	.Ascii	<30>/C/<200>
-F0013:	.Ascii	<11>/N/<200>
-F0014:	.Ascii	<43>/IN$/<200>
+F0011:	.Ascii	<16>/S/<200>	; ABS (14.)
+F0012:	.Ascii	<30>/C/<200>	; ASC (24.)
+F0013:	.Ascii	<11>/N/<200>	; ATN (9.)
+F0014:	.Ascii	<43>/IN$/<200>	; BIN$ (35.)
 
 	.Psect	Trees$
 F0015:	.Word	<'H & 37> ! < F0016-. * 40>
@@ -324,9 +342,9 @@ F0015:	.Word	<'H & 37> ! < F0016-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0016:	.Ascii	<42>/R$/<200>
-F0017:	.Ascii	<21>/NT/<200>
-F0018:	.Ascii	<7>/S/<200>
+F0016:	.Ascii	<42>/R$/<200>	; CHR$ (34.)
+F0017:	.Ascii	<21>/NT/<200>	; CINT (17.)
+F0018:	.Ascii	<7>/S/<200>	; COS (7.)
 
 	.Psect	Trees$
 F0019:	.Word	<'N & 37> ! < F0020-. * 40>
@@ -334,8 +352,8 @@ F0019:	.Word	<'N & 37> ! < F0020-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0020:	.Ascii	<20>/G/<200>
-F0021:	.Ascii	<23>/LIN/<200>
+F0020:	.Ascii	<20>/G/<200>	; CSNG (16.)
+F0021:	.Ascii	<23>/LIN/<200>	; CSRLIN (19.)
 
 	.Psect	Trees$
 F0022:	.Word	<'O & 37> ! < F0023-. * 40>
@@ -343,8 +361,8 @@ F0022:	.Word	<'O & 37> ! < F0023-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0023:	.Ascii	<22>/F/<200>
-F0024:	.Ascii	<12>/P/<200>
+F0023:	.Ascii	<22>/F/<200>	; EOF (18.)
+F0024:	.Ascii	<12>/P/<200>	; EXP (10.)
 
 	.Psect	Trees$
 F0025:	.Word	<'I & 37> ! < F0026-. * 40>
@@ -353,10 +371,10 @@ F0025:	.Word	<'I & 37> ! < F0026-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0026:	.Ascii	<15>/X/<200>
-F0027:	.Byte	35, 200
-F0028:	.Ascii	<26>/E/<200>
-F0029:	.Ascii	<45>/EX$/<200>
+F0026:	.Ascii	<15>/X/<200>	; FIX (13.)
+F0027:	.Byte	35, 200		; FN (29.)
+F0028:	.Ascii	<26>/E/<200>	; FRE (22.)
+F0029:	.Ascii	<45>/EX$/<200>	; HEX$ (37.)
 
 	.Psect	Trees$
 F0030:	.Word	<'N & 37> ! < F0031-. * 40>
@@ -368,10 +386,10 @@ F0031:	.Word	<'K & 37> ! < F0032-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0032:	.Ascii	<36>/EY$/<200>
-F0033:	.Byte	2, 200
-F0034:	.Ascii	<32>/TR/<200>
-F0035:	.Byte	14, 200
+F0032:	.Ascii	<36>/EY$/<200>	; INKEY$ (30.)
+F0033:	.Byte	2, 200		; INP (2.)
+F0034:	.Ascii	<32>/TR/<200>	; INSTR (26.)
+F0035:	.Byte	14, 200		; INT (12.)
 
 	.Psect	Trees$
 F0036:	.Word	<'E & 37> ! < F0037-. * 40>
@@ -380,11 +398,11 @@ F0036:	.Word	<'E & 37> ! < F0037-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0037:	.Ascii	<27>/N/<200>
-F0038:	.Ascii	<13>/G/<200>
-F0039:	.Ascii	<25>/OS/<200>
-F0040:	.Ascii	<37>/ID$/<200>
-F0041:	.Ascii	<44>/CT$/<200>
+F0037:	.Ascii	<27>/N/<200>	; LEN (23.)
+F0038:	.Ascii	<13>/G/<200>	; LOG (11.)
+F0039:	.Ascii	<25>/OS/<200>	; LPOS (21.)
+F0040:	.Ascii	<37>/ID$/<200>	; MID$ (31.)
+F0041:	.Ascii	<44>/CT$/<200>	; OCT$ (36.)
 
 	.Psect	Trees$
 F0042:	.Word	<'E & 37> ! < F0043-. * 40>
@@ -393,8 +411,8 @@ F0042:	.Word	<'E & 37> ! < F0043-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0043:	.Ascii	<3>/EK/<200>
-F0044:	.Byte	0, 200
+F0043:	.Ascii	<3>/EK/<200>	; PEEK (3.)
+F0044:	.Byte	0, 200		; PI (0.)
 
 	.Psect	Trees$
 F0045:	.Word	<'I & 37> ! < F0046-. * 40>
@@ -402,9 +420,9 @@ F0045:	.Word	<'I & 37> ! < F0046-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0046:	.Ascii	<1>/NT/<200>
-F0047:	.Byte	24, 200
-F0048:	.Ascii	<4>/ND/<200>
+F0046:	.Ascii	<1>/NT/<200>	; POINT (1.)
+F0047:	.Byte	24, 200		; POS (20.)
+F0048:	.Ascii	<4>/ND/<200>	; RND (4.)
 
 	.Psect	Trees$
 F0049:	.Word	<'G & 37> ! < F0050-. * 40>
@@ -414,9 +432,9 @@ F0049:	.Word	<'G & 37> ! < F0050-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0050:	.Ascii	<17>/N/<200>
-F0051:	.Ascii	<6>/N/<200>
-F0052:	.Ascii	<5>/R/<200>
+F0050:	.Ascii	<17>/N/<200>	; SGN (15.)
+F0051:	.Ascii	<6>/N/<200>	; SIN (6.)
+F0052:	.Ascii	<5>/R/<200>	; SQR (5.)
 
 	.Psect	Trees$
 F0053:	.Word	<'R & 37> ! < F0054-. * 40>
@@ -426,10 +444,10 @@ F0054:	.Word	<'$ & 37> ! < F0055-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0055:	.Byte	41, 200
-F0056:	.Ascii	<40>/NG$/<200>
-F0057:	.Ascii	<10>/AN/<200>
-F0058:	.Ascii	<34>/SR/<200>
+F0055:	.Byte	41, 200		; STR$ (33.)
+F0056:	.Ascii	<40>/NG$/<200>	; STRING$ (32.)
+F0057:	.Ascii	<10>/AN/<200>	; TAN (8.)
+F0058:	.Ascii	<34>/SR/<200>	; USR (28.)
 
 	.Psect	Trees$
 F0059:	.Word	<'A & 37> ! < F0060-. * 40>
@@ -439,8 +457,8 @@ F0060:	.Word	<'L & 37> ! < F0061-. * 40>
 	.Word	-1	; End of table
 
 	.Psect	Tails$
-F0061:	.Byte	31, 200
-F0062:	.Ascii	<33>/PTR/<200>
+F0061:	.Byte	31, 200		; VAL (25.)
+F0062:	.Ascii	<33>/PTR/<200>	; VARPTR (27.)
 
 
 	.End			; Конец модуля

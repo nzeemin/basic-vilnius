@@ -7,31 +7,39 @@
 ;******************************************************************************
 
 
-.Include /IDE.MLB/			; Подключение маробиблиотеки
+.Include /IDE.MLB/		; Подключение маробиблиотеки
 
-	Define				; Определение популярных констант
-	.RelDef	B			; Определение релокатора для модуля
+	Define			; Определение популярных констант
+	.RelDef	B		; Определение релокатора для модуля
 
-.Psect	System				; Программная секция
+.Psect	System			; Программная секция
 
+;------------------------------------------------------------------------------
+; UPEXEC - функции основного меню IDE: F01..F95 (по IDDAT.MAC: F0x - файл,
+; F3x - поиск, F4x - запуск, F5x - компиляция, F6x - вычисление, F7x - опции,
+; F8x/F9x - экран и справка). Запросы к ЦП - CpCall (код в FFFF, см. PPIO.MAC) и
+; C1CALL; файлы - окно 177010/177014 и буфер ЦП BBUF. Текст в ПП - 100000..
+; DN.PTR под ПЗУ (PZUOff/PZUOn). Макрос Rel - запись в таблицу релокации (см.
+; IDE.MAC). Регистры: R5 - параметры JSR R5,.. (за вызовом - данные)
+;------------------------------------------------------------------------------
 ;******************************************************************************
 ;*	Функция "О программе" (About)					      *
 ;******************************************************************************
 
 F01::
-Rel	Window	#About			; Открыть окно
-$Ret::	Return				; Возврат
+Rel	Window	#About		; Открыть окно
+$Ret::	Return			; Возврат
 
 ;******************************************************************************
 ;*                            Функции Transfer                                *
 ;******************************************************************************
 
 F02::
-Rel	Mov	#TrfNm1,r1
-	Br	Transfer
+Rel	Mov	#TrfNm1,r1	; R1 -> имя файла графического редактора
+	Br	Transfer	; Общая часть
 
 F03::
-Rel	Mov	#TrfNm2,r1
+Rel	Mov	#TrfNm2,r1	; R1 -> имя файла редактора шрифтов
 	Br	Transfer
 
 ;******************************************************************************
@@ -40,40 +48,40 @@ Rel	Mov	#TrfNm2,r1
 ;******************************************************************************
 
 Transfer::
-	Tst	Psw1			; Режим 8 - цвета на экране
+	Tst	Psw1		; Режим 8 - цвета на экране
 	Beq	1$
-	Push	r1			; Да - сохранить текст в своп файле
+	Push	r1		; Да - сохранить текст в своп файле
 	Call	VLook
 	Pop	r1
-1$:	Call	$Ncopy			; Передать имя файла в ЦП
-	CpCall	#17.			; Вызов трансфера ЦП с именем
-	Movb	#377,TrsFlg		; Флаг трансфера
-	Jmp	Exec			; Запуск программы
+1$:	Call	$Ncopy		; Передать имя файла в ЦП
+	CpCall	#17.		; Вызов трансфера ЦП с именем
+	Movb	#377,TrsFlg	; Флаг трансфера
+	Jmp	Exec		; Запуск программы
 
 ;******************************************************************************
 ;*	Функция	"Открыть файл..." (Open file...)			      *
 ;******************************************************************************
 
 F11::
-	Mov	#100,nHelp		; Контекст справки для окна
-Rel	Mov	#$OpF,Ds.Ptr		; Выбор функции списка файлов
-Rel	Window	#OpenD			; Вызов диалогового окна
-	Return				; Возврат
+	Mov	#100,nHelp	; Контекст справки для окна
+Rel	Mov	#$OpF,Ds.Ptr	; Выбор функции списка файлов
+Rel	Window	#OpenD		; Вызов диалогового окна
+	Return			; Возврат
 
 ;******************************************************************************
 ;*	Функция Opf окна "Открыть файл"					      *
 ;******************************************************************************
 
 $OpF::
-	Call	$12			; Обработка введеного имени
-	Cmp	(Sp)+,(Sp)+		; Восстановление стека
-	Call	$LoadF			; Вызов загрузчика
-$9:	Clr	Rol.HD			; Обнуление скролеров 
+	Call	$12		; Обработка введеного имени
+	Cmp	(Sp)+,(Sp)+	; Восстановление стека
+	Call	$LoadF		; Вызов загрузчика
+$9:	Clr	Rol.HD		; Обнуление скролеров
 	Clr	Rol.GD
-	Clr	Ed.X			; Обнулении координат курсора
+	Clr	Ed.X		; Обнулении координат курсора
 	Clr	Ed.Y
-$13:	Call	$Cls			; Oчистка экрана
-	Jmp	$EWP			; Вывод фрагмента текста на экран
+$13:	Call	$Cls		; Oчистка экрана
+	Jmp	$EWP		; Вывод фрагмента текста на экран
 ;	Return				; Возврат
 
 ;******************************************************************************
@@ -81,17 +89,17 @@ $13:	Call	$Cls			; Oчистка экрана
 ;******************************************************************************
 
 F12::
-	Call	$New			; Создать новый файл Noname.Bas
-	Br	$9			; Отображение на экране	
+	Call	$New		; Создать новый файл Noname.Bas
+	Br	$9		; Отображение на экране
 
 ;******************************************************************************
 ;	Функция "Сохранить" (Save)					      *
 ;******************************************************************************
 
 F13::
-	Tstb	NoNmId			; Имя файла определено ?
-	Bne	F14			; Нет - "Save as..."
-	Jmp	$SaveF			; Записать файл на диск
+	Tstb	NoNmId		; Имя файла определено ?
+	Bne	F14		; Нет - "Save as..."
+	Jmp	$SaveF		; Записать файл на диск
 ;	Return				; Возврат
 
 ;******************************************************************************
@@ -99,671 +107,670 @@ F13::
 ;******************************************************************************
 
 F14::
-	Mov	#100,nHelp		; Контекст помощи для окна
-Rel	Mov	#$SvF,Ds.Ptr		; Выбор функции каталога
-Rel	Window	#SaveD			; Вызов диалогового окна "Save file"
-$10:	Return				; Возврат
+	Mov	#100,nHelp	; Контекст помощи для окна
+Rel	Mov	#$SvF,Ds.Ptr	; Выбор функции каталога
+Rel	Window	#SaveD		; Вызов диалогового окна "Save file"
+$10:	Return			; Возврат
 
 ;******************************************************************************
 ;*	Функция Svf окна "Сохранить файл"				      *
 ;******************************************************************************
 
 $SvF::
-	Clrb	NoNmId			; Сброс признака безымяного файла
-	Call	$12			; Обработка введенного имени
-	Cmp	(Sp)+,(Sp)+		; Восстановление стека
-	Mov	#FArea,R0		; Копирование имени в заголовок
-Rel	Mov	#EFNam,R1
-1$:	Movb	(R0)+,(R1)+
+	Clrb	NoNmId		; Сброс признака безымяного файла
+	Call	$12		; Обработка введенного имени
+	Cmp	(Sp)+,(Sp)+	; Восстановление стека
+	Mov	#FArea,R0	; Копирование имени в заголовок
+Rel	Mov	#EFNam,R1	; R1 -> заголовок рамки редактора (EFNam)
+1$:	Movb	(R0)+,(R1)+	; Копировать имя до нуля
 	Bne	1$
-	Call	$SaveF			; Сохранить на диске
-	Jmp	$13			; Обновить экран		
+	Call	$SaveF		; Сохранить на диске
+	Jmp	$13		; Обновить экран
 
 ;******************************************************************************
 ;*	Обработка имени файла						      *
 ;******************************************************************************
 
-$12:	Mov	#Farea,r1		; Копирование имени в промежуточный буфер
-	Mov	#16.,r2			; В имени максимум 16 символов
-1$:	Movb	Lbuf-Farea(r1),(r1)+
+$12:	Mov	#Farea,r1	; Копирование имени в промежуточный буфер
+	Mov	#16.,r2		; В имени максимум 16 символов
+1$:	Movb	Lbuf-Farea(r1),(r1)+	; Байт из LBUF (поле ввода окна) в FAREA
 	Sob	r2,1$
-	Mov	#Farea,R1		; Указатель на имя файла.
-	Call	$NCopy			; Переслать имя в ЦП и проверить
-	Tstb	Ferr			; Имя с ошибкой ?
-	Bne	3$			; Да - возврат в окно.
-	Tstb	Ferr+1			; Вместо имени введена маска ?
-	Bne	2$			; Да - вызов функции просмотра каталога
-	Wclose				; Закрыть диалоговое окно
+	Mov	#Farea,R1	; Указатель на имя файла.
+	Call	$NCopy		; Переслать имя в ЦП и проверить
+	Tstb	Ferr		; Имя с ошибкой ?
+	Bne	3$		; Да - возврат в окно.
+	Tstb	Ferr+1		; Вместо имени введена маска ?
+	Bne	2$		; Да - вызов функции просмотра каталога
+	Wclose			; Закрыть диалоговое окно
 	Return
 
-2$:	Call	Sdrv			; Изменить маску по умолчанию
-	Jmp	DrPr1			; Вывод обновленого каталога в окно
+2$:	Call	Sdrv		; Изменить маску по умолчанию
+	Jmp	DrPr1		; Вывод обновленого каталога в окно
 
-3$:	Tst	(Sp)+			; Возврат в окно при неправильном имени
+3$:	Tst	(Sp)+		; Возврат в окно при неправильном имени
 	Return
 
 ;******************************************************************************
 ;*	Внутреняя функция смены маски по умолчанию			      *
 ;******************************************************************************
 
-Sdrv:	
-	Jsr	R5,PpCp			; Копирование из ПП в ЦП
+Sdrv:
+	Jsr	R5,PpCp		; Копирование из ПП в ЦП
 	.Word	<DefAlt/2>,FArea,7
-	Return				; Возврат
+	Return			; Возврат
 
 ;******************************************************************************
 ;*	Функция "Сохранить все" (Save all)                                    *
 ;******************************************************************************
 
 F15::
-	Call	F13			; Сохранить текст
-	Jmp	F75			; Сохранить установки
+	Call	F13		; Сохранить текст
+	Jmp	F75		; Сохранить установки
 
 ;******************************************************************************
 ;	Функция "Выход в Rt11" (Exit)
 ;******************************************************************************
 
-F19::	Call	TstAsv			; Автозапись
-	Tstb	ChngId			; Текст был изменен ?
-	Beq	Qui
-Rel	Window	#TsChD			; Да - Окно с предупреждением.	
+F19::	Call	TstAsv		; Автозапись
+	Tstb	ChngId		; Текст был изменен ?
+	Beq	Qui		; Нет - сразу выход
+Rel	Window	#TsChD		; Да - Окно с предупреждением.
 	Return
-SfQ::	Call	F13
-Qui::	Tst	(Sp)+
-	Clr	@#177026		; Восстановление РЗП.
-	Call	NmScr			; Восстановление экрана
-	Call	RSTFNT			; Восстановление шрифта
-	Mov	SysPl,@#2470		; Восстановление палитры
+SfQ::	Call	F13		; Вход из окна TsChD: сохранить текст и выйти
+Qui::	Tst	(Sp)+		; Адрес возврата не нужен (выход из IDE)
+	Clr	@#177026	; Восстановление РЗП.
+	Call	NmScr		; Восстановление экрана
+	Call	RSTFNT		; Восстановление шрифта
+	Mov	SysPl,@#2470	; Восстановление палитры
 	Mov	SysPl+2,@#2472
 	Mov	SysPl,@#4700
 	Mov	SysPl+2,@#4702
-	Call	NmKey			; Восстановление клавиатуры
-	Mov	OldTm,@#100		; Восстановление сетевого таймера
+	Call	NmKey		; Восстановление клавиатуры
+	Mov	OldTm,@#100	; Восстановление сетевого таймера
 OldTr	==.+2
-	Mov	#0,@#34			; Восстановление вектора Emt
+	Mov	#0,@#34		; Восстановление вектора Emt
 OldKb	==.+2
 	Mov	#0,@#300
-	Call	CurClr			; Сброс курсора
-Rel	Mov	#Begin,R1		; Освобождение памяти
+	Call	CurClr		; Сброс курсора
+Rel	Mov	#Begin,R1	; Освобождение памяти
 	Call	@#176300
-	Mov	#14.,FFFF		; Командa ЦП - выход
+	Mov	#14.,FFFF	; Командa ЦП - выход
 	CALL	$$DSCL
-	Real
-	Tst	(SP)+			; Восстановбение Sp
-        Mtps	#0			; Низкий приоритет процессора
-        Return				; Возврат
+	Real			; Макрос Real: в режиме Extend - CALL P.Real
+	Tst	(SP)+		; Восстановбение Sp
+	Mtps	#0		; Низкий приоритет процессора
+	Return			; Возврат
 
 
-F31::					; "FIND..."
+F31::				; "FIND..."
 
-        BIT     #100,ESW
-        BEQ     1$
-        CALL    $GCPTR
-        MOV     R0,FB.PTR
-        MOVB    #1,FB.PTR+5
-        BR      $1
+	BIT	#100,ESW	; ESW бит 100: поиск под курсором
+	BEQ	1$		; Нет - образец из FDBUF
+	CALL	$GCPTR		; R0 -> слово под курсором в тексте
+	MOV	R0,FB.PTR	; Образец поиска = это слово
+	MOVB	#1,FB.PTR+5	; Флаги поля ввода: взять прежнее (бит 1)
+	BR	$1		; Открыть окно
 1$:
-REL     MOV     #FDBUF,FB.PTR
-        MOVB    #3,FB.PTR+5
-	Mov	#101,nHelp
-$1:REL  WINDOW  #FINDD
-        RETURN
+REL	MOV	#FDBUF,FB.PTR	; Образец поиска - FDBUF (прежний)
+	MOVB	#3,FB.PTR+5	; Флаги: прежнее значение, строка с нулём
+	Mov	#101,nHelp	; Контекст справки 101
+$1:	REL	WINDOW	#FINDD	; Окно поиска FINDD
+	RETURN			; Возврат
 
 $FNDEX::
-        MOV     #LBUF,R0
-REL     MOV     #FDBUF,R1
-        MOV     #40.,R2
-1$:     MOVB    (R0)+,(R1)+
-        SOB     R2,1$
-F33::					; "SEARCH AGAIN"
-$SRC::  
-REL	TSTB	@#FDBUF
-	BEQ	2$
-	CALL    $FND
-        BCS     2$
-        MOV     R0,R2
-        CALL    $GABSN
-        SUB     R2,R0
-        NEG     R0
-        SUB     R3,R0
-        PUSH    R0
-        ADD     #LBUF,R0
-        MOV     R0,LB.PTR
-        MOV     R0,MX.PTR
-	CLR	ED.Y
-	CALL	LCLNUM
-        MOV     R3,R2
-        MOV     ED.Y,R3
-        TST     (R3)+
-        POP     R1
-        SUB     ROL.HD,R1
-        MOV     R1,ED.X
-        MOV     R1,R0
-        ADD     R2,R0
-        
-        CMP     R0,#77.
-        BHIS    6$
-        TST     R1
-        BMI     6$
+	MOV	#LBUF,R0	; Образец поиска из строки ввода LBUF
+REL	MOV	#FDBUF,R1	; в FDBUF
+	MOV	#40.,R2		; 40. символов
+1$:	MOVB	(R0)+,(R1)+	; Копировать образец
+	SOB	R2,1$
+F33::				; "SEARCH AGAIN"
+$SRC::
+REL	TSTB	@#FDBUF		; Образец пуст?
+	BEQ	2$		; Да - окно "не найдено" (NOTI)
+	CALL	$FND		; Искать: C = 0 - найден, R0 -> за ним
+	BCS	2$		; C = 1 - не найден => сообщение
+	MOV	R0,R2		; R2 = адрес найденного
+	CALL	$GABSN		; R0 = адрес начала строки
+	SUB	R2,R0		; R0 = начало строки - найденное
+	NEG	R0		; R0 = смещение найденного от начала строки
+	SUB	R3,R0		; Минус R3 (смысл R3 не выяснен до конца)
+	PUSH	R0		; Запомнить смещение в строке
+	ADD	#LBUF,R0	; Адрес в LBUF
+	MOV	R0,LB.PTR	; Курсор: LB.PTR
+	MOV	R0,MX.PTR	; Запомненный столбец MX.PTR
+	CLR	ED.Y		; Курсор в первую строку окна
+	CALL	LCLNUM		; Показать нужную строку (LCLNUM)
+	MOV	R3,R2		; R2 = R3 (запомнить)
+	MOV	ED.Y,R3		; R3 -> слово таблицы строк окна
+	TST	(R3)+		; Следующее слово таблицы
+	POP	R1		; R1 = смещение в строке
+	SUB	ROL.HD,R1	; Минус сдвиг рулона
+	MOV	R1,ED.X		; Столбец курсора
+	MOV	R1,R0		; R0 = столбец
+	ADD	R2,R0		; Плюс R2: проверка на ширину окна
 
-        CALL    $LC.ED
-        INC     R1
-        CALL    $INV
-        CALL    $PUSH
-5$:     TRAP    0
-        CMP     @#7206,@#7210
-        BEQ     5$
-        CALL    $POP
-	CALL	$INV
+	CMP	R0,#77.		; Помещается в окно (77.)?
+	BHIS	6$		; Нет - без подсветки
+	TST	R1		; Левее окна?
+	BMI	6$		; Да - без подсветки
+
+	CALL	$LC.ED		; Поставить курсор на экране
+	INC	R1		; Начало образца
+	CALL	$INV		; Подсветить найденное (инверсия)
+	CALL	$PUSH		; Сохранить состояние в стеке
+5$:	TRAP	0		; Ждать (диспетчер ПП)
+	CMP	@#7206,@#7210	; Очередь клавиш пуста?
+	BEQ	5$		; Да - ждать дальше
+	CALL	$POP		; Убрать данные из стека
+	CALL	$INV		; Снять подсветку
 
 
-6$:     RETURN
+6$:	RETURN			; Возврат
 
 
 
 
 2$:
-REL     WINDOW  #NOTI
-        RETURN
+REL	WINDOW	#NOTI		; Окно "образец не найден"
+	RETURN			; Возврат
 
 
 
 
 F34::
-REL	WINDOW	#GOLNM
-$2:	RETURN
+REL	WINDOW	#GOLNM		; Окно "Перейти на строку" (GOLNM)
+$2:	RETURN			; Возврат
 
 $GOLIN::
-	MOV	#LBUF,R2
-	CALL	$DEC.C
-	BCS	$2
-	CLR	ED.Y
-	MOV	R5,R1
-	Jmp	LCLNUM
+	MOV	#LBUF,R2	; LBUF - поле ввода окна
+	CALL	$DEC.C		; Десятичное число из R2 -> R5; C = 1 - ошибка
+	BCS	$2		; Ошибка - выход
+	CLR	ED.Y		; Курсор в первую строку окна
+	MOV	R5,R1		; R1 = номер строки
+	Jmp	LCLNUM		; Перейти на строку
 
 
 
-F35::					; "SHOW LAST ERROR"
+F35::				; "SHOW LAST ERROR"
 
-	MOV     CM.ERN,R5
-	BEQ	2$
-	CALL	GETMS1
-	MOV	WBPNT,R4
-	MOV	(PC)+,(R4)+
+	MOV	CM.ERN,R5	; R5 = номер последней ошибки
+	BEQ	2$		; Нет ошибки - выход
+	CALL	GETMS1		; Текст сообщения (TTBUF), R4 -> конец
+	MOV	WBPNT,R4	; Дескриптор окна: следующее слово WBUF
+	MOV	(PC)+,(R4)+	; Позиция окна: X = 0, Y = 1
 	.BYTE	0,1.
-	MOV	(PC)+,(R4)+
+	MOV	(PC)+,(R4)+	; Размер окна: 80. столбцов, 1 строка
 	.BYTE	80.,1.
-	TST	(R4)+
-	CALL	$SAVE
-	COLOR	YELLOW,BLUE
-	MOV	CM.ERL,R1
-	CALL	$GABSP
-	MOV	#10.,ED.Y
-	CALL	LCLNUM
-	COLOR	BLACK,YELLOW
-	LOC	0,1.
-	CALL	$PRTZ
-	MOV	ED.Y,R3
-	ADD	#2,R3
-	MOV	#1,R1
-	MOV	#78.,R2
-	PUSH	<R3,R2,R1>
-	CALL	$INV
-	CALL	$LC.ED
-	CALL	$CURON
-1$:	Emt	22
-	WCLOSE
-	Cmp	r0,#Fk1
-	Bne	3$
-	Mov	Cm.Ern,nHelp
-	Add	#1000,nHelp
-	Call	GetHlp
+	TST	(R4)+		; Пропустить слово
+	CALL	$SAVE		; Запомнить область экрана
+	COLOR	YELLOW,BLUE	; Цвет: жёлтый на синем
+	MOV	CM.ERL,R1	; Номер строки с ошибкой
+	CALL	$GABSP		; R0 -> эта строка текста
+	MOV	#10.,ED.Y	; ED.Y = 10. (середина окна)
+	CALL	LCLNUM		; Показать строку
+	COLOR	BLACK,YELLOW	; Цвет: чёрный на жёлтом
+	LOC	0,1.		; Курсор в верхнюю строку
+	CALL	$PRTZ		; Вывести сообщение об ошибке (TTBUF)
+	MOV	ED.Y,R3		; Строка курсора
+	ADD	#2,R3		; +2 (рамка и меню)
+	MOV	#1,R1		; Столбец 1
+	MOV	#78.,R2		; Ширина 78.
+	PUSH	<R3,R2,R1>	; Запомнить R3, R2, R1
+	CALL	$INV		; Подсветить строку с ошибкой
+	CALL	$LC.ED		; Поставить курсор
+	CALL	$CURON		; Включить курсор
+1$:	Emt	22		; Ждать клавишу (EMT 22)
+	WCLOSE			; Закрыть окно
+	Cmp	r0,#Fk1		; Клавиша F1?
+	Bne	3$		; Нет - выход
+	Mov	Cm.Ern,nHelp	; Да - справка по номеру ошибки:
+	Add	#1000,nHelp	; контекст = номер ошибки + 1000
+	Call	GetHlp		; Вывести справку
 
-3$:	POP	<R1,R2,R3>
-	CALL	$INV
+3$:	POP	<R1,R2,R3>	; Восстановить R1, R2, R3
+	CALL	$INV		; Снять подсветку
 2$:	RETURN
-	
-	
 
-F41::					; "RUN"
-	Call	TstAsv
-	TST	PSW1
-	BEQ	1$
-	CALL	VLOOK
-1$:	Clrb	RWait
-	CALL	F511
-	BCS	$100
-	Clrb	TrsFlg
-EXEC::	CALL    NMSCR
-REL	MOV	#BASPL,R0
-	TST	PSW1
-	BEQ	1$
-	CLR	@#177026
-	ADD	#<SYSPL-BASPL>,R0
-        
+
+
+F41::				; "RUN"
+	Call	TstAsv		; Автозапись текста и установок
+	TST	PSW1		; Режим 8 - цвета на экране?
+	BEQ	1$		; Нет - не сохранять
+	CALL	VLOOK		; Да - текст в своп-файл
+1$:	Clrb	RWait		; Не ждать клавишу после компиляции
+	CALL	F511		; Компиляция (F511)
+	BCS	$100		; Ошибка - выход
+	Clrb	TrsFlg		; Не трансфер
+EXEC::	CALL	NMSCR		; Экран обычного режима (Бейсик)
+REL	MOV	#BASPL,R0	; R0 -> палитра Бейсика
+	TST	PSW1		; Режим 8 (цвета)?
+	BEQ	1$		; Нет (4 цвета) - палитра BASPL
+	CLR	@#177026	; 8 цветов: все плоскости разрешены
+	ADD	#<SYSPL-BASPL>,R0	; R0 -> палитра SYSPL (вместо BASPL)
+
 1$:
-	MOV	(R0),@#2470
-	MOV     2(R0),@#2472
-	MOV	(R0),@#4700
+	MOV	(R0),@#2470	; Палитра в 2470, 2472 (экран Бейсика)
+	MOV	2(R0),@#2472	; (системные ячейки ПП)
+	MOV	(R0),@#4700	; Копия в 4700, 4702
 	MOV	2(R0),@#4702
-	Mov	#-1,RN.FLG
+	Mov	#-1,RN.FLG	; RN.FLG = -1: программа выполняется
 
-	
-	CALL    NMKEY
+
+	CALL	NMKEY		; Клавиатура в исходные коды (NmKey)
 
 	.Irp	i,<7234,7514,7774,10254,10534>
-	Clr	@#i+216
+	Clr	@#i+216		; Клавиша УСТ (i+216): отключить
 	.Endr
-	
-	Call	Bs.Exe
-	
-	Mov	#405,r0
+
+	Call	Bs.Exe		; Запуск программы ЦП (Bs.Exe)
+
+	Mov	#405,r0		; Вернуть 405: регистровая клавиша 5 (УСТ)
 	.Irp	i,<7234,7514,7774,10254,10534>
-	Mov	r0,@#i+216
+	Mov	r0,@#i+216	; ...
 	.Endr
-	
-	
-	
-	Clr	Rn.Flg
-	Tstb	TrsFlg
-	Bne	$6
-	Mov	Ferr,Cm.Ern
-	Mov	#Number/2,@#177010
-	Mov	@#177014,Cm.Erl
-	Color	7,1
-	
-	Call	ReKey
-Rel	Mov	#EbStr,R1
-	Emt	46
-	Flush
-	Emt	22
+
+
+
+	Clr	Rn.Flg		; Программа не выполняется
+	Tstb	TrsFlg		; Был трансфер?
+	Bne	$6		; Да - без сообщений
+	Mov	Ferr,Cm.Ern	; Номер ошибки выполнения
+	Mov	#Number/2,@#177010	; Номер строки ошибки из ЦП (Number)
+	Mov	@#177014,Cm.Erl	; CM.ERL = номер строки ошибки
+	Color	7,1		; Цвет: символ 7, фон 1 (номера цветов)
+
+	Call	ReKey		; Клавиатура IDE
+Rel	Mov	#EbStr,R1	; R1 -> "Нажмите любую клавишу..." (ESC Y)
+	Emt	46		; Вывести строку
+	Flush			; Очистить очередь клавиш
+	Emt	22		; Ждать клавишу
 	Br	$7
-	
-$6:	Call	ReKey
-$7:	CALL	RESCR
-	CALL	$BGPRT
-        TST	PSW1
-        BEQ	10$
-        CALL	VUNLOOK
 
-        
-10$:	CALL    $EWP
-	Tstb	TrsFlg
-        Bne	$100
-	TST	CM.ERN
-	BNE     $102
-$100:   RETURN
+$6:	Call	ReKey		; После трансфера - только клавиатура
+$7:	CALL	RESCR		; Экран IDE
+	CALL	$BGPRT		; Меню и нижняя строка
+	TST	PSW1		; Режим 8 (цвета)?
+	BEQ	10$		; Нет - не восстанавливать текст
+	CALL	VUNLOOK		; Да - загрузить текст из своп-файла
 
 
-$102:	MOV	CM.ERN,R5
-	CALL	GETMSG
-	Mov	Cm.Ern,r0
-	Add	#1000,r0
-	Mov	r0,nHelp
-
-REL	WINDOW	#DBGD
-	Return
-
-ErHl::	Tst	Psw3
-	Bne	1$
-	Jmp	F35	
-1$:	RETURN
+10$:	CALL	$EWP		; Перерисовать окно редактора
+	Tstb	TrsFlg		; Был трансфер?
+	Bne	$100		; Да - выход
+	TST	CM.ERN		; Была ошибка?
+	BNE	$102		; Да - окно ошибки
+$100:	RETURN
 
 
-	
+$102:	MOV	CM.ERN,R5	; R5 = номер ошибки
+	CALL	GETMSG		; Текст сообщения
+	Mov	Cm.Ern,r0	; Контекст справки:
+	Add	#1000,r0	; номер ошибки + 1000
+	Mov	r0,nHelp	; ...
 
-F45::					; "PROGRAMM RESET"
-	CpCall	#16.
-	Return
+REL	WINDOW	#DBGD		; Окно ошибки выполнения (DBGD)
+	Return			; Возврат
 
-F51::					; "COMPILE"
-	Movb	#377,RWait
+ErHl::	Tst	Psw3		; Отладка (PSW3): 0 - включена
+	Bne	1$		; Выключена (1) - выход
+	Jmp	F35		; Включена - показать последнюю ошибку
+1$:	RETURN			; Возврат
+
+
+
+
+F45::				; "PROGRAMM RESET"
+	CpCall	#16.		; Код 16.: сброс программы в ЦП (PPrgRs)
+	Return			; Возврат
+
+F51::				; "COMPILE"
+	Movb	#377,RWait	; Флаг: ждать клавишу после компиляции
 F511:
-REL	WINDOW	#COMPD
-	Push	<#13.,#2.>
-	Call	$Wloc
-Rel	Print	#EfNam
-	Push	<#13.,#3.>
-	Call	$Wloc
-Rel	Print	#EfNam
-	Call	$Ncopy
-	
-	Mov	#DbgID/2,@#177010
-	Movb	PSW3,@#177014
-	Movb	Psw4,@#177015
-	
-	MOV     UP.PTR,CM.PTR
-	CLR	CM.NUM
-	MOV	#177777,CM.FLG
-        CpCall	#7
-	CLR     CM.FLG
-	MOV	FERR,CM.ERN
-	MOV	#NUMBER/2,@#177010
-	MOV	@#177014,CM.ERL
-	DEC	CM.ERL
-	PUSH	<#1,#12.>
-	CALL	$WLOC
-	MOV	#TTBUF+39.,R1
-	CLRB	(R1)
-	MOV	#39.,R0
-1$:	MOVB	#40,-(R1)
-	SOB	R0,1$
-	TST	(R1)+
-REL	MOV	#SUCSTR,R2
-	TST	FERR
-	BEQ	3$
-	ADD	#ERRSIR-SUCSTR,R2
-3$:	MOVB	(R2)+,(R1)+
-	BNE	3$
-	MOVB	#40,-(R1)
-	MOV	#TTBUF+15.,R1
-REL	MOV	#PRKEYT,R2
-2$:	MOVB	(R2)+,(R1)+
-	BNE	2$
-	MOVB	#40,-(R1)
-	COLOR	YELLOW,BLUE
-	CALL	$PRTZ
-	Tst	Ferr
-	Bne	1$
-	Tstb	RWait
-	Beq	3$
-1$:	EMT	22
-3$:	WCLOSE
-	TST	FERR
-	BEQ	4$
-	Cmpb	#Escape,r0
-	Beq	5$
-	CALL	F35
-5$:	SEC
-4$:	RETURN
-	
+REL	WINDOW	#COMPD		; Окно компиляции COMPD
+	Push	<#13.,#2.>	; Позиция X = 13., Y = 2.
+	Call	$Wloc		; Установить курсор в окне
+Rel	Print	#EfNam		; Имя файла
+	Push	<#13.,#3.>	; Позиция X = 13., Y = 3.
+	Call	$Wloc		; Установить курсор в окне
+Rel	Print	#EfNam		; Имя файла
+	Call	$Ncopy		; Имя файла - в ЦП
 
-	
-F61::					; "EVALUATE/MODIFY"
-REL	WINDOW	#EVLMDD
-	RETURN
+	Mov	#DbgID/2,@#177010	; Адрес DbgID в памяти ЦП
+	Movb	PSW3,@#177014	; Признаки отладки PSW3, PSW4 (по байту)
+	Movb	Psw4,@#177015	; ...
+
+	MOV	UP.PTR,CM.PTR	; Первая строка текста: UP.PTR
+	CLR	CM.NUM		; Счётчик строк = 0
+	MOV	#177777,CM.FLG	; Флаг компиляции (запрет повторного входа)
+	CpCall	#7		; Код 7: компиляция (PCOMP)
+	CLR	CM.FLG		; Снять флаг
+	MOV	FERR,CM.ERN	; Номер ошибки компиляции
+	MOV	#NUMBER/2,@#177010	; Номер строки ошибки из ЦП (Number)
+	MOV	@#177014,CM.ERL	; CM.ERL = номер строки ошибки
+	DEC	CM.ERL		; Нумерация строк с 0
+	PUSH	<#1,#12.>	; Позиция X = 1, Y = 12.
+	CALL	$WLOC		; Установить курсор в окне
+	MOV	#TTBUF+39.,R1	; Буфер TTBUF: 39. пробелов + 0
+	CLRB	(R1)		; Нулевой байт в конце
+	MOV	#39.,R0		; 39. символов
+1$:	MOVB	#40,-(R1)	; Заполнить пробелами
+	SOB	R0,1$
+	TST	(R1)+		; R1 -> начало буфера
+REL	MOV	#SUCSTR,R2	; R2 -> строка "успешно"
+	TST	FERR		; Были ошибки?
+	BEQ	3$		; Нет - копировать "успешно"
+	ADD	#ERRSIR-SUCSTR,R2	; Да - строка ERRSIR
+3$:	MOVB	(R2)+,(R1)+	; Копировать строку
+	BNE	3$
+	MOVB	#40,-(R1)	; Пробел вместо нуля
+	MOV	#TTBUF+15.,R1	; Приглашение с позиции 15.
+REL	MOV	#PRKEYT,R2	; R2 -> строка PRKEYT (нажмите клавишу)
+2$:	MOVB	(R2)+,(R1)+	; Копировать строку
+	BNE	2$
+	MOVB	#40,-(R1)	; Пробел вместо нуля
+	COLOR	YELLOW,BLUE	; Цвет: жёлтый на синем
+	CALL	$PRTZ		; Вывести текст
+	Tst	Ferr		; Была ошибка?
+	Bne	1$		; Да - ждать клавишу
+	Tstb	RWait		; Нужно ждать клавишу?
+	Beq	3$		; Нет - закрыть окно
+1$:	EMT	22		; Ждать клавишу (EMT 22)
+3$:	WCLOSE			; Закрыть окно
+	TST	FERR		; Была ошибка?
+	BEQ	4$		; Нет - выход, C = 0
+	Cmpb	#Escape,r0	; Esc?
+	Beq	5$		; Да - без показа ошибки
+	CALL	F35		; Показать ошибку (F35)
+5$:	SEC			; C = 1 - ошибка компиляции
+4$:	RETURN
+
+
+
+F61::				; "EVALUATE/MODIFY"
+REL	WINDOW	#EVLMDD		; Окно "Вычислить/Изменить" EVLMDD
+	RETURN			; Возврат
 
 $EVLT::
 
-	Jsr	r5,PpCp
+	Jsr	r5,PpCp		; Поля BUF в LBUF (по 20. слов):
 	.Word	<Buf/2>,Lbuf,20.
-	Jsr	r5,PpCp
+	Jsr	r5,PpCp		; вторая часть - в LBUF + 100
 	.Word	<Buf/2+30.>,Lbuf+100.,20.
-	
-	Tst	@#177062
-	Push	@#330
-	Mov	#LBuf+50.,TPTR
-Rel	Mov	#TtGET,@#330
-	Mov	#200,@#332
-	CpCall	#15.
-	Pop	@#330
-	MOV	TPTR,R0
-	Mov	Ferr,r5
-	Beq	1$
-	Call	GetMs1
-	Mov	#Lbuf+50.,r0
-	Mov	#TtBuf,r1
-3$:	Movb	(r1)+,(r0)+
-	Cmp	r1,r4
+
+	Tst	@#177062	; Прочитать регистр данных терминала (177062)
+	Push	@#330		; Сохранить вектор 330
+	Mov	#LBuf+50.,TPTR	; TPTR -> куда класть вывод
+Rel	Mov	#TtGET,@#330	; Вектор 330: свой вывод символа TTGET
+	Mov	#200,@#332	; PSW вектора 330
+	CpCall	#15.		; Код 15.: вычислить (PPRINT)
+	Pop	@#330		; Вернуть вектор 330
+	MOV	TPTR,R0		; R0 -> конец результата
+	Mov	Ferr,r5		; Номер ошибки
+	Beq	1$		; Нет ошибки
+	Call	GetMs1		; Текст сообщения
+	Mov	#Lbuf+50.,r0	; Вместо результата - сообщение
+	Mov	#TtBuf,r1	; Источник - TTBUF
+3$:	Movb	(r1)+,(r0)+	; Копировать
+	Cmp	r1,r4		; До R4
 	Bne	3$
 
 
-1$:	MOVB	#40,(R0)+
-	CMPB	R0,#LBUF+87.
+1$:	MOVB	#40,(R0)+	; Дополнить пробелами
+	CMPB	R0,#LBUF+87.	; до столбца 87.
 	BLOS	1$
-	
-	CLRB	@#LBUF+87.
-	PUSH	<#2,#5>
-	CALL	$WLOC
-	COLOR	YELLOW,BLUE
-	PRINT	#LBUF+50.
-	MOVB	#40,@#LBUF+87.
-	RETURN
-	
-	
-TTGET:
-	Push	R0
-	Mov	@#177062,R0
-	Cmp	r0,#40
-	Blo	1$
-	Cmp	TPtr,#Lbuf+87.
-	Bhis	1$
-	Movb	R0,@TPTR
-	Inc	TPTR
-1$:	Pop	R0
-	Rti
 
-TPTR:	.BLKW	1	
+	CLRB	@#LBUF+87.	; Нулевой байт в конце
+	PUSH	<#2,#5>		; Позиция X = 2, Y = 5
+	CALL	$WLOC		; Установить курсор в окне
+	COLOR	YELLOW,BLUE	; Цвет: жёлтый на синем
+	PRINT	#LBUF+50.	; Вывести результат
+	MOVB	#40,@#LBUF+87.	; Пробел вместо нуля
+	RETURN			; Возврат
+
+
+TTGET:
+	Push	R0		; Сохранить R0
+	Mov	@#177062,R0	; Символ из регистра данных
+	Cmp	r0,#40		; Управляющий?
+	Blo	1$		; Да - пропустить
+	Cmp	TPtr,#Lbuf+87.	; Буфер полон?
+	Bhis	1$		; Да - пропустить
+	Movb	R0,@TPTR	; Положить символ в буфер
+	Inc	TPTR		; Следующая позиция
+1$:	Pop	R0		; Восстановить R0
+	Rti			; Возврат из прерывания
+
+TPTR:	.BLKW	1		; Указатель в буфере результата
 
 
 
 PpCp::
-	Push	<r0,r1>
-	Mov	(r5)+,@#177010
-	Mov	(r5)+,r0
-	Mov	(r5)+,r1
-1$:	Mov	(r0)+,@#177014
-	Inc	@#177010
-	Sob	r1,1$
-	Pop	<r1,r0>
-	Rts	r5
-	
+	Push	<r0,r1>		; Сохранить R0, R1
+	Mov	(r5)+,@#177010	; Адрес окна ПП (слово адреса ЦП/2)
+	Mov	(r5)+,r0	; R0 -> источник в ПП
+	Mov	(r5)+,r1	; R1 = число слов
+1$:	Mov	(r0)+,@#177014	; Слово из ПП в ОЗУ ЦП
+	Inc	@#177010	; Следующий адрес ЦП
+	Sob	r1,1$		; Все слова
+	Pop	<r1,r0>		; Восстановить R1, R0
+	Rts	r5		; Возврат за параметрами
 
 
 
-	
-	
-	
-			
+
+
+
+
+
 
 
 .If	Eq	Version-Beta
-F71::					; "COMPILER"
-	Mov	#102,nHelp
-REL     WINDOW  #COMPO
-        RETURN
+F71::				; "COMPILER"
+	Mov	#102,nHelp	; Контекст справки 102
+REL	WINDOW	#COMPO		; Окно "Компилятор" COMPO
+	RETURN			; Возврат
 .EndC
 
-	
-F741::					; "PREFERENCES"
-	Mov	#103,nHelp
-REL	WINDOW	#PREFM 
-        RETURN
 
-F742::					; "EDITOR"
-REL     WINDOW  #EDITD
-        RETURN
+F741::				; "PREFERENCES"
+	Mov	#103,nHelp	; Контекст справки 103
+REL	WINDOW	#PREFM		; Окно "Установки" PREFM
+	RETURN			; Возврат
 
-F744::					; "PALLETE"
-REL     WINDOW  #PALETE
-        RETURN
+F742::				; "EDITOR"
+REL	WINDOW	#EDITD		; Окно "Редактор" EDITD
+	RETURN			; Возврат
+
+F744::				; "PALLETE"
+REL	WINDOW	#PALETE		; Окно "Палитра" PALETE
+	RETURN			; Возврат
 
 $SPMN::
-        JSR     %5,$SPPL
-        .BYTE   0,4,6,7
-        RETURN
+	JSR	%5,$SPPL	; Палитры меню (4 значения за вызовом)
+	.BYTE	0,4,6,7
+	RETURN			; Возврат
 
 $SPCL::
-        JSR     %5,$SPPL
-        .BYTE   0,1,5,6
-        RETURN
+	JSR	%5,$SPPL	; Палитры диалога (4 значения за вызовом)
+	.BYTE	0,1,5,6
+	RETURN			; Возврат
 
 
-F75::					; "SAVE DESKTOP"
-Rel	Mov	#Dls,R1
-	Call	DnPrt
-Rel	Print	#Dld	
+F75::				; "SAVE DESKTOP"
+Rel	Mov	#Dls,R1		; R1 -> сообщение
+	Call	DnPrt		; Показать сообщение в нижней строке
+Rel	Print	#Dld		; Вывести сообщение
 
-REL	MOV	#DSFILE,R1
-	CALL	$NCOPY
-	MOVB	#10.,FFFF
-	CALL	C1CALL
-	BCS	$200
-	MOV	BBUF,@#177010
-REL	MOV	#DSCTOP,R4
-	MOV	#<ENDPP-DSCTOP>/2,R3
-	MOV	R3,FLEN
-	CLR	FBLK
-1$:	MOV	(R4)+,@#177014
-	INC	@#177010
-	SOB	R3,1$
-	MOVB	#4,FFFF
-	CALL	C1CALL
-	BCS	$200
-	MOVB	#1,FFFF
-	CALL	C1CALL
-$200:	JMP	DLCREA
-
-
-
+REL	MOV	#DSFILE,R1	; R1 -> имя файла DSFILE
+	CALL	$NCOPY		; Передать имя в ЦП
+	MOVB	#10.,FFFF	; Код 10.: создать файл
+	CALL	C1CALL		; Выполнить запрос с повтором
+	BCS	$200		; Ошибка - выход
+	MOV	BBUF,@#177010	; Адрес буфера ЦП в окно
+REL	MOV	#DSCTOP,R4	; R4 -> начало установок
+	MOV	#<ENDPP-DSCTOP>/2,R3	; R3 = размер в словах
+	MOV	R3,FLEN		; Длина записи
+	CLR	FBLK		; Блок 0
+1$:	MOV	(R4)+,@#177014	; Слово в буфер ЦП
+	INC	@#177010	; Следующий адрес
+	SOB	R3,1$		; Все слова
+	MOVB	#4,FFFF		; Код 4: запись
+	CALL	C1CALL		; Выполнить
+	BCS	$200		; Ошибка - выход
+	MOVB	#1,FFFF		; Код 1: закрыть
+	CALL	C1CALL		; Выполнить
+$200:	JMP	DLCREA		; Вернуть нижнюю строку, выход
 
 
 
-	RETURN
-F81::					; "REFRESH DISPLAY"
-        CALL    $CLS
-        CALL    $EWP
-        RETURN
-
-F91::					; "CONTENS"
-	Mov	#2,nHelp
-	Jmp	GetHlp
 
 
-F95::					; "USING HELP"
-        Mov	#1,nHelp
-	Jmp	GetHlp
-        
-        
-        
+
+	RETURN			; Недостижимо (Return после JMP)
+F81::				; "REFRESH DISPLAY"
+	CALL	$CLS		; Очистить окно редактора
+	CALL	$EWP		; Перерисовать
+	RETURN			; Возврат
+
+F91::				; "CONTENS"
+	Mov	#2,nHelp	; Контекст справки 2 (оглавление)
+	Jmp	GetHlp		; Вывести справку
+
+
+F95::				; "USING HELP"
+	Mov	#1,nHelp	; Контекст справки 1 (как пользоваться)
+	Jmp	GetHlp		; Вывести справку
+
+
+
 
 $GCPTR::
-        CALL    $GETLP
-        MOV     LB.PTR,R4
-        SUB     #LBUF,R4
-        CMPB    (R1),R4
-        BHI     1$
-        .MOVB   (R1),R4
-        DEC     R0
-1$:     ADD     R4,R0
-        RETURN
+	CALL	$GETLP		; R0 -> строка ED.Y в тексте, R1 -> её длина
+	MOV	LB.PTR,R4	; R4 = смещение курсора в строке
+	SUB	#LBUF,R4	; (LB.PTR - LBUF)
+	CMPB	(R1),R4		; Курсор за концом строки?
+	BHI	1$		; Нет - как есть
+	.MOVB	(R1),R4		; Да - R4 = длина строки
+	DEC	R0		; Без ограничивающего нуля
+1$:	ADD	R4,R0		; R0 -> позиция в тексте
+	RETURN			; Возврат
 
 
 VUNLOOK::
-Rel	Mov	#Ldswfl,r1
-	Call	DnPrt	
+Rel	Mov	#Ldswfl,r1	; R1 -> сообщение "загрузка своп-файла"
+	Call	DnPrt		; Показать сообщение
 
-REL	MOV	#SWNSC,R1
-	CALL	$NCOPY
-	MOVB	#9.,FFFF
-	CALL	C1CALL
-	BCS	13$
-	CLR	FBLK
-	MOV	#177010,R5
-	MOV	#177014,R4
-	MOV	#PLEN/2,(R5)
-	SWAB	(r4)
-	ASL	(r4)
-	ADD	#100000,(r4)
-	MOV	(R4),F.LEN
-	MOV	#100000,R3
-	
-	
-	
-2$:	
-	MOV	F.LEN,R0
-	SUB	R3,R0
-	CMP	R0,#20000
-	BLO	3$
-	MOV	#20000,R0
-3$:	ASR	R0
-	MOV	R0,FLEN	
-	CALL	PZUON
-	MOVB	#2,FFFF
-	CALL	C1CALL
-	BCS	13$
-	ADD	#20,FBLK
-	MOV	BBUF,(R5)
-	MOV	#10000,R1
-	CALL	PZUOFF
-1$:	MOV	(R4),(R3)+
-	INC	(R5)
-	CMP	R3,F.LEN
-	BHIS	10$
-	SOB	R1,1$
-	BR	2$
-10$:	CALL	PZUON
-	MOVB	#1,FFFF
-	CALL	C1CALL
-13$:	JMP	DLCREA
-	
+REL	MOV	#SWNSC,R1	; R1 -> имя TB0000.SWP
+	CALL	$NCOPY		; Передать имя в ЦП
+	MOVB	#9.,FFFF	; Код 9.: открыть
+	CALL	C1CALL		; Выполнить
+	BCS	13$		; Ошибка - выход
+	CLR	FBLK		; Блок 0
+	MOV	#177010,R5	; R5 = регистр адреса окна
+	MOV	#177014,R4	; R4 = регистр данных окна
+	MOV	#PLEN/2,(R5)	; Адрес PLEN (длина файла) в ЦП
+	SWAB	(r4)		; Прочитать слово (байты переставлены)
+	ASL	(r4)		; Длина в байтах
+	ADD	#100000,(r4)	; Плюс 100000: конец текста в ПП
+	MOV	(R4),F.LEN	; F.LEN = конец загружаемого текста
+	MOV	#100000,R3	; R3 -> начало текста в ПП
 
-	
-	
-	
-	
 
-	
+
+2$:
+	MOV	F.LEN,R0	; Осталось
+	SUB	R3,R0		; ...
+	CMP	R0,#20000	; Остаток меньше 20000 (8192.) байт?
+	BLO	3$		; Да - весь остаток
+	MOV	#20000,R0	; Нет - порция 20000 байт
+3$:	ASR	R0		; В слова
+	MOV	R0,FLEN		; Длина записи
+	CALL	PZUON		; ПЗУ включить
+	MOVB	#2,FFFF		; Код 2: чтение
+	CALL	C1CALL		; Выполнить
+	BCS	13$		; Ошибка - выход
+	ADD	#20,FBLK	; Следующие 16. блоков
+	MOV	BBUF,(R5)	; Адрес буфера ЦП в окно
+	MOV	#10000,R1	; Слов в порции
+	CALL	PZUOFF		; ПЗУ отключить
+1$:	MOV	(R4),(R3)+	; Слово из ЦП в текст ПП
+	INC	(R5)		; Следующий адрес
+	CMP	R3,F.LEN	; Конец текста?
+	BHIS	10$		; Да - закончить
+	SOB	R1,1$		; Порция
+	BR	2$		; Следующая порция
+10$:	CALL	PZUON		; ПЗУ включить
+	MOVB	#1,FFFF		; Код 1: закрыть
+	CALL	C1CALL		; Выполнить
+13$:	JMP	DLCREA		; Вернуть нижнюю строку, выход
+
+
+
+
+
+
+
+
 
 
 
 VLOOK::
-Rel	Mov	#CRSWFL,r1
-	Call	DnPrt
-REL	MOV	#SWNSC,R1
-	CALL	$NCOPY
-	MOVB	#10.,FFFF
-	CALL	C1CALL
-	BCS	14$
-	CLR	FBLK
-	MOV	#3,R0
-	MOV	#177010,R5
-	MOV	#100000,(R5)
-2$:	MOV	#10000,R2
-	MOV	BBUF,R1
-1$:	MOV	2(R5),R4
-	SWAB	R4
-	INC	(R5)
-	BIS	2(R5),R4
-	SWAB	R4
-	INC	(R5)
-	PUSH	(R5)
-	MOV	R1,(R5)
-	MOV	R4,4(R5)
-	INC	R1
-	POP	(R5)
-	CMP	(R5),DN.PTR
-	BHI	10$
-	SOB	R2,1$
-	BR	11$
-10$:	MOV	#1,R0
-11$:	SUB	#10000,R2
-	NEG	R2
-	MOV	R2,FLEN
-	MOVB	#4,FFFF
-	CALL	C1CALL
-	BCS	14$
-	ASH	#-8.,R2
-	ADD	R2,FBLK
-	SOB	R0,2$
-	MOVB	#1,FFFF
-	CALL	C1CALL
-14$:	JMP	DLCREA
+Rel	Mov	#CRSWFL,r1	; R1 -> сообщение "запись своп-файла"
+	Call	DnPrt		; Показать сообщение
+REL	MOV	#SWNSC,R1	; R1 -> имя TB0000.SWP
+	CALL	$NCOPY		; Передать имя в ЦП
+	MOVB	#10.,FFFF	; Код 10.: создать
+	CALL	C1CALL		; Выполнить
+	BCS	14$		; Ошибка - выход
+	CLR	FBLK		; Блок 0
+	MOV	#3,R0		; Счётчик порций
+	MOV	#177010,R5	; R5 = регистр адреса окна
+	MOV	#100000,(R5)	; Начало текста в ПП
+2$:	MOV	#10000,R2	; Слов в порции
+	MOV	BBUF,R1		; R1 -> буфер ЦП
+1$:	MOV	2(R5),R4	; Байт из ПП
+	SWAB	R4		; Старший байт
+	INC	(R5)		; Следующий адрес
+	BIS	2(R5),R4	; Склеить слово
+	SWAB	R4		; Порядок байтов
+	INC	(R5)		; Следующий адрес
+	PUSH	(R5)		; Запомнить адрес ПП
+	MOV	R1,(R5)		; Адрес буфера ЦП
+	MOV	R4,4(R5)	; Слово в буфер ЦП
+	INC	R1		; Следующее слово буфера
+	POP	(R5)		; Адрес ПП обратно
+	CMP	(R5),DN.PTR	; Конец текста?
+	BHI	10$		; Да - последняя порция
+	SOB	R2,1$		; Слов в порции
+	BR	11$		; Порция
+10$:	MOV	#1,R0		; Последняя порция
+11$:	SUB	#10000,R2	; Длина порции
+	NEG	R2		; в словах
+	MOV	R2,FLEN		; Длина записи
+	MOVB	#4,FFFF		; Код 4: запись
+	CALL	C1CALL		; Выполнить
+	BCS	14$		; Ошибка - выход
+	ASH	#-8.,R2		; Длина в блоках
+	ADD	R2,FBLK		; Следующий блок
+	SOB	R0,2$		; Следующая порция
+	MOVB	#1,FFFF		; Код 1: закрыть
+	CALL	C1CALL		; Выполнить
+14$:	JMP	DLCREA		; Вернуть нижнюю строку, выход
 
 ;	Процедура авто записи файлов
 TstAsv::
-	Bit	#1,Psw2
-	Beq	1$
-	Tstb	ChngId
-	Beq	1$
-	Call	F13
-1$:	Bit	#2,Psw2
-	Beq	2$
-	Call	F75
-2$:	Jmp	DlCrea
+	Bit	#1,Psw2		; Автозапись текста (Psw2, бит 1)?
+	Beq	1$		; Нет
+	Tstb	ChngId		; Текст изменён?
+	Beq	1$		; Нет
+	Call	F13		; Записать текст
+1$:	Bit	#2,Psw2		; Автозапись установок (Psw2, бит 2)?
+	Beq	2$		; Нет
+	Call	F75		; Записать установки
+2$:	Jmp	DlCrea		; Вернуть нижнюю строку
 
 TrfNm1:	.Asciz	/DK:PAINT.TBO/
 TrfNm2:	.Asciz	/DK:EDITFT.TBO/
 	.Even
 	.END
-	
